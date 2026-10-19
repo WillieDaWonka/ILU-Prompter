@@ -9,7 +9,7 @@ Branch: `worktree-agent-ae2905c299e5a6360` (stream B). Contract: `docs/ARCHITECT
 | `AppInputBridge` (keys + preview wheel/buttons) | done, unit-tested (pure helpers + STA event raising, no devices) |
 | `RawMouseWheelProvider` | done, unit-tested helpers only; NOT run on hardware |
 | `XInputProvider` | done, unit-tested helpers only; NOT run on hardware |
-| `ContourShuttleProvider` | pending |
+| `ContourShuttleProvider` | done, unit-tested helpers only; NOT run on hardware |
 
 ## Decisions
 
@@ -43,6 +43,29 @@ Branch: `worktree-agent-ae2905c299e5a6360` (stream B). Contract: `docs/ARCHITECT
   `Disconnected` status, then 1 s probing for reconnect. Switching device or stopping emits zero for the old pad's
   non-zero axes so the router's slots are not left "held". Guide is not exposed by documented XInput, so not mapped.
   Battery re-read every 30 s; a change re-reports `Connected` with the new level.
+
+- **Contour.** HidSharp, VID/PID 0B33:0020 (ShuttleXpress), 0B33:0030 (ShuttlePRO v2), 05F3:0240 (ShuttlePRO v1).
+  `ContourShuttleReportParser.TryParse` takes 5 bytes, or 6+ with a leading 0x00 report id; anything else is
+  rejected (logged once). `ShuttleReportTracker` is the pure state machine: the first report after each open is
+  the baseline (ring emitted once, no jog event, held buttons do not fire); then ring on change (k/7), jog as the
+  wrapped `(sbyte)(cur-prev)`, button edges diffed per raw bit and mapped via `ContourModels`.
+  **Button maps to verify on hardware:** ShuttleXpress raw bits 4..8 = buttons 1..5 (from the LinuxCNC
+  `shuttle.c` report description, not a unit in hand); ShuttlePRO v1/v2 raw bits 0..14 = buttons 1..15; any other
+  bit passes through as bit+1. A specific `DeviceId` that is not attached reports `NotFound` (it never silently
+  uses another unit); `null` = first Contour device. Open failure -> `NotFound` with Detail "Close the Contour
+  ShuttlePro software, then reconnect". `DeviceList.Local.Changed` wakes the loop to reconnect; read loop ends on
+  IOException/unplug -> `Disconnected`.
+- **Stubs.** `Providers.Stubs.cs` is deleted; no `STUB` markers remain in `src/IluPrompter.Input`.
+
+## Hardware verification still needed (not done: Defender rule, ask the user first)
+
+1. Raw Input INPUTSINK on the message-only window actually delivers `WM_INPUT` while another app is focused
+   (Phase-0 S4b); otherwise set `ILU_RAWINPUT_TOOLWINDOW=1` or switch the code default.
+2. `RawInputDevice.DevicePath` for the chosen mouse equals what `EnumerateDevices` listed, and the
+   removal/arrival handle round trip (`WM_INPUT_DEVICE_CHANGE`) reports Disconnected/Connected.
+3. XInput triggers/sticks/buttons unfocused; unplug mid-scroll shows Disconnected (router ramps to 0 in 0.3 s).
+4. Contour ring/jog/buttons unfocused; button numbering on both models; behaviour when Contour's own software holds
+   the device.
 
 ## How to test
 
