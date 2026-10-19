@@ -19,6 +19,8 @@ public static class ShortcutCatalog
             new("F8", "Blank output on or off"),
             new("F11", "Show or hide the output"),
             new("Esc", "In the script: leave it and hand the keys to the transport. In transport: pause"),
+            new("F9", "Show or hide the live panel (Controller, Output layout)"),
+            new("Ctrl+F9", "Open the live panel's other tab"),
             new("Ctrl+,", "Settings"),
             new("Ctrl+/", "Shortcut list"),
             new("Ctrl+N", "New script"),

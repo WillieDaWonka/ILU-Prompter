@@ -34,6 +34,8 @@ public static class AppServiceCollectionExtensions
         // view models
         services.AddSingleton<MarginEditorViewModel>();
         services.AddSingleton<OutputLayoutViewModel>();
+        services.AddSingleton<ControllerPanelViewModel>();
+        services.AddSingleton<LivePanelViewModel>();
         services.AddSingleton<LiveViewModel>();
         services.AddSingleton<SectionsViewModel>();
         services.AddSingleton<EditorToolbarViewModel>();

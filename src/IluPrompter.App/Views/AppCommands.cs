@@ -23,6 +23,12 @@ public static class AppCommands
 
     public static readonly RoutedUICommand GoToScript = Make("Go to the script", nameof(GoToScript), Key.F2, ModifierKeys.None);
 
+    /// <summary>F9: show or hide the live panel. Global, like Ctrl+, : works while typing.</summary>
+    public static readonly RoutedUICommand ToggleLivePanel = Make("Show or hide the live panel", nameof(ToggleLivePanel), Key.F9, ModifierKeys.None);
+
+    /// <summary>Ctrl+F9: open the live panel's other tab, showing the panel if it is hidden.</summary>
+    public static readonly RoutedUICommand OtherLivePanelTab = Make("Open the live panel's other tab", nameof(OtherLivePanelTab), Key.F9, ModifierKeys.Control);
+
     private static RoutedUICommand Make(string text, string name, Key key, ModifierKeys modifiers)
     {
         var gestures = new InputGestureCollection();
