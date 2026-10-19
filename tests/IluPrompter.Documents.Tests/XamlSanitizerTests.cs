@@ -105,7 +105,7 @@ public class XamlSanitizerTests
         Assert.Contains("TextDecorations=\"Strikethrough\"", clean);
         Assert.Contains("FontSize=\"25\"", clean);
         Assert.DoesNotContain("Typography.", clean);
-        Assert.DoesNotContain("Foreground=\"#FFFFFFFF\"", clean); // the host document's own foreground
+        Assert.DoesNotContain("Foreground=\"" + Colors.White + "\"", clean); // the host document's own foreground
         Assert.StartsWith("<Section", clean);
         var back = T.Load(saved);
         Assert.Equal(T.Texts(doc), T.Texts(back));

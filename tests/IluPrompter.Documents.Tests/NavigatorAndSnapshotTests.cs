@@ -191,8 +191,8 @@ public class NavigatorAndSnapshotTests
         Assert.Single(snap.Sections);
         var back = T.Load(snap.FlowDocumentXaml);
         Assert.Equal(25, T.RunWithText(back, "one two").FontSize);
-        Assert.Equal("#FFFF0000", T.ColourOf(T.RunWithText(back, "three").Foreground));
-        Assert.Equal("#FFFFFF00", T.ColourOf(T.RunWithText(back, "three").Background));
+        Assert.Equal(Colors.Red.ToString(), T.ColourOf(T.RunWithText(back, "three").Foreground));
+        Assert.Equal(Colors.Yellow.ToString(), T.ColourOf(T.RunWithText(back, "three").Background));
     }
 
     [WpfFact]
