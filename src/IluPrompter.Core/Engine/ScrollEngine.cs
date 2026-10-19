@@ -33,6 +33,7 @@ public sealed class ScrollEngine : IScrollEngine
     private int _hasTicked;
     private EngineStatus _status;
     private LayoutGeometry? _geometry;
+    private int _publishSeq;             // seqlock: odd while SetLayout replaces geometry and position together
 
     // State below is guarded by _gate.
     private LayoutGeometry _geo = LayoutGeometry.Empty();
@@ -101,6 +102,26 @@ public sealed class ScrollEngine : IScrollEngine
 
     public double ReadPosition() => BitConverter.Int64BitsToDouble(Interlocked.Read(ref _positionBits));
 
+    public double ReadPosition(out LayoutGeometry? geometry)
+    {
+        var spin = default(SpinWait);
+        while (true)
+        {
+            var before = Volatile.Read(ref _publishSeq);
+            if ((before & 1) == 0)
+            {
+                var g = Volatile.Read(ref _geometry);
+                var p = ReadPosition();
+                if (Volatile.Read(ref _publishSeq) == before)
+                {
+                    geometry = g;
+                    return p;
+                }
+            }
+
+            spin.SpinOnce();
+        }
+    }
     public void Tick(long timestamp) => TickCore(timestamp);
 
     public bool TickIfStale(long timestamp, double staleAfterSeconds = 0.05)
@@ -120,19 +141,36 @@ public sealed class ScrollEngine : IScrollEngine
     public void SetLayout(LayoutGeometry geometry, ViewportMetrics viewport)
     {
         ArgumentNullException.ThrowIfNull(geometry);
+
+        // The edit diff is O(text): work it out before taking the lock, so a tick on another thread never waits for it.
+        var current = Volatile.Read(ref _geometry);
+        var map = current is not null && !string.Equals(geometry.LayoutKey, current.LayoutKey, StringComparison.Ordinal)
+            ? AnchorMap.Between(current, geometry)
+            : null;
+
         EngineStatus? changed;
         lock (_gate)
         {
-            if (_hasLayout && string.Equals(geometry.LayoutKey, _geo.LayoutKey, StringComparison.Ordinal))
+            double visible;
+            Interlocked.Increment(ref _publishSeq);
+            try
             {
-                ApplyViewportOnly(viewport);
+                if (_hasLayout && string.Equals(geometry.LayoutKey, _geo.LayoutKey, StringComparison.Ordinal))
+                {
+                    ApplyViewportOnly(viewport);
+                }
+                else
+                {
+                    ApplyNewGeometry(geometry, viewport, ReferenceEquals(current, _geo) ? map : null);
+                }
+
+                visible = Publish();
             }
-            else
+            finally
             {
-                ApplyNewGeometry(geometry, viewport);
+                Interlocked.Increment(ref _publishSeq);
             }
 
-            var visible = Publish();
             changed = RefreshStatus(visible);
         }
 
@@ -891,23 +929,14 @@ public sealed class ScrollEngine : IScrollEngine
         Resettle();
     }
 
-    private void ApplyNewGeometry(LayoutGeometry geometry, ViewportMetrics viewport)
+    private void ApplyNewGeometry(LayoutGeometry geometry, ViewportMetrics viewport, AnchorMap? precomputed)
     {
         var old = _geo;
         var hadLines = _hasLayout && old.LineCount > 0;
-
-        // Running step animations snap to their target first: _pos is the destination.
-        var y = _pos + _readingY;
         var wasAtEnd = _transport == TransportState.AtEnd;
-        double fraction = 0;
-        DocumentAnchor anchor = default;
-        if (hadLines)
-        {
-            var i = old.FindLineAt(y);
-            anchor = old.GetAnchor(y);
-            var h = old.LineHeights[i];
-            fraction = h > 0 ? Math.Clamp((y - old.LineTops[i]) / h, 0.0, 1.0) : 0.0;
-        }
+        var oldReading = _readingY;
+        var target = _pos;                 // destination of any running step animation
+        var shown = _pos - _remaining;     // what is on screen now
 
         _geo = geometry;
         _hasLayout = true;
@@ -916,26 +945,44 @@ public sealed class ScrollEngine : IScrollEngine
         _readingY = SafeReading(viewport);
         ComputeBounds();
         BuildSectionTargets();
-        _remaining = 0;
-        _animStart = 0;
-        _animElapsed = 0;
-        _autoStepAccum = 0;
 
         if (wasAtEnd)
         {
             _pos = _pMax;
+            CutAnimation();
         }
         else if (!hadLines || geometry.LineCount == 0)
         {
             _pos = _pMin;
+            CutAnimation();
         }
         else
         {
-            var k = Math.Max(0, geometry.FindLineForAnchor(anchor));
-            _pos = Math.Clamp(geometry.LineTops[k] + (fraction * geometry.LineHeights[k]) - _readingY, _pMin, _pMax);
+            // Live-edit invariant (ARCHITECTURE §2.4 "Layout change"): the text on the reading line stays there. The reading
+            // point is mapped through the edit (AnchorMap: paragraphs inserted/deleted/edited anywhere) and through reflow,
+            // for both the animation's destination and the picture on screen, so a running step keeps running from where
+            // it visibly is. The line-scrolling step timer is not reset.
+            var map = precomputed ?? AnchorMap.Between(old, geometry);
+            var newTarget = LayoutMapping.MapPosition(old, geometry, map, target + oldReading - _readingY, _readingY);
+            var newShown = _remaining == 0 ? newTarget : LayoutMapping.MapPosition(old, geometry, map, shown + oldReading - _readingY, _readingY);
+            _pos = Math.Clamp(newTarget, _pMin, _pMax);
+            if (_remaining != 0)
+            {
+                var remaining = _pos - Math.Clamp(newShown, _pMin, _pMax);
+                _animStart = double.IsFinite(remaining / _remaining) ? _animStart * (remaining / _remaining) : 0;
+                _remaining = remaining;
+                if (_remaining == 0) _animStart = 0;
+            }
         }
 
         Resettle();
+    }
+
+    private void CutAnimation()
+    {
+        _remaining = 0;
+        _animStart = 0;
+        _animElapsed = 0;
     }
 
     /// <summary>Re-establish transport invariants after the bounds moved.</summary>

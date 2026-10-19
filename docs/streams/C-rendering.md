@@ -97,6 +97,10 @@ pulse is an internal interface that `OutputHost` implements and `PrompterPreview
   `GCLatencyMode.SustainedLowLatency` while Playing and visible; both released otherwise and on dispose.
 
 ### Surface
+- **Amended 19 Oct 2026 (live-edit fix, see INTEGRATION.md and ARCHITECTURE §3):** the surface no longer builds or lays
+  out a FlowDocument. The layout thread (`PictureWorker`/`PictureBuilder`) does, patches script edits and hands both
+  surfaces a frozen `PromptPicture`; the surface shows it with `PicturePresenter` and maps positions while it is a frame
+  behind the engine. The notes below about rebuilds describe the original design.
 - Layout key exactly as §4.C; a second `ContentKey` adds the default ink so a colour change rebuilds the document without the
   engine seeing a new layout. Anything else cheap (margins, reading line, markers, dim band) only repositions and calls
   `engine.SetLayout(sameGeometry, newViewport)`.

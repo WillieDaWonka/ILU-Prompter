@@ -9,7 +9,9 @@
     <SelfContained>false</SelfContained>
     <!-- Publish: dotnet publish src/IluPrompter.App -c Release -p:SelfContained=true -o publish/ILUPrompter -->
     <PublishSingleFile>false</PublishSingleFile>
-    <PublishReadyToRun>false</PublishReadyToRun>
+    <!-- ReadyToRun (publish only): measured 19 Oct 2026 on the 20-page sample, the first full layout 146-155 ms instead of
+         166-204 ms and an earlier main window; +12 MB. The output itself no longer waits for it (layout thread). -->
+    <PublishReadyToRun>true</PublishReadyToRun>
     <InvariantGlobalization>false</InvariantGlobalization>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>

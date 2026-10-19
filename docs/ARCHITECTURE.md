@@ -692,6 +692,11 @@ public interface IScrollEngine
     /// The text area shows document Y in [pos, pos + TextAreaHeight).</summary>
     double ReadPosition();
 
+    /// <summary>The latest position together with the geometry it is in, read consistently (seqlock; lock-free,
+    /// allocation-free, any thread). Added 19 Oct 2026 (live-edit fix): a surface whose picture is not the engine's
+    /// layout yet maps the position onto its own picture. Default implementation for test doubles.</summary>
+    double ReadPosition(out LayoutGeometry? geometry) { geometry = Geometry; return ReadPosition(); }
+
     /// <summary>Latest status (volatile reference read, any thread).</summary>
     EngineStatus Status { get; }
 
@@ -722,7 +727,7 @@ public interface IScrollEngine
 | Line mode | Display rules still apply to jumps and steps. **Play** = auto-step one line every `60 / lpm(|SetSpeed|)` s in the sign of SetSpeed (each step is a LineStep animation); `StepIntervalSeconds` reports it. Axis speed in Line mode sets the auto-step rate instead of velocity. Switching mode keeps the position; Display → Line snaps to the nearest line centre with a LineStep animation |
 | Pause at sections | If `Scroll.PauseAtSections` and the reading line crosses a section target while Playing forward → clamp exactly to the target and Pause |
 | Fail-safe | `FailSafeStop`: clear axis slots and ramp the applied speed to 0 over 0.3 s, then Paused |
-| Layout change | `SetLayout` with a new LayoutKey: anchor = `old.GetAnchor(P+R)` plus the fractional position inside that line, then `P = newLineTop + f·newLineHeight − R`. Running step animations snap to their target first. Same key: viewport only, keep `P + R_old − R_new`. Before any geometry, use `LayoutGeometry.Empty` and viewport (1600, 952, 314) |
+| Layout change | `SetLayout` with a new LayoutKey re-anchors in the same call, so the first frame with the new layout already shows the same text on the reading line (**live-edit invariant**: while the output shows, no edit anywhere and no reflow may move the text on the reading line). The reading point is tied to the nearest text line: its start anchor plus the fraction down that line, or, in a gap, the signed distance from the nearer line edge (`LayoutMapping`). When the snapshot changed, the anchor is first mapped through the edit with `AnchorMap.Between(old, new)` (paragraph texts carried by the geometry: paragraph prefix/suffix, unique-text matching, character-level prefix/suffix inside the edited paragraphs; text that was deleted maps to where the deletion was). Both the step animation's destination and the visible position are mapped, so a running step keeps running from where it visibly is; the line-scrolling step timer is not reset. *(Changed 19 Oct 2026, live-edit fix: the old rule kept the paragraph index, so inserting or deleting a paragraph above jumped the prompt, and snapping a running step to its target jumped it mid-step.)* Same key: viewport only, keep `P + R_old − R_new`. Before any geometry, use `LayoutGeometry.Empty` and viewport (1600, 952, 314) |
 | Status | Replace `Status` only when a rounded field changes: EffectiveSpeed/LinesPerMinute/WordsPerMinute to 0.1, SecondsRemaining to 1 s; indices exact. `SecondsRemaining = SecondsForLines(LineCount−1−LineIndex, SetSpeed)` |
 | Performance | Steady-state `Tick` allocates **0 bytes** (test with `GC.GetAllocatedBytesForCurrentThread`). No LINQ, closures or boxing in Tick. One lock (`_gate`), never held while raising events |
 
@@ -819,6 +824,11 @@ public sealed class LayoutGeometry
     public IReadOnlyList<SectionMarker> Sections { get; }
     public int WordCount { get; }
 
+    /// <summary>Plain text of each paragraph as laid out (canonical order, the text LineCharOffsets index), or empty when
+    /// the builder did not supply it. Lets a relayout map the reading anchor through an edit (AnchorMap).
+    /// Added 19 Oct 2026 (live-edit fix); optional so existing constructions stay valid.</summary>
+    public IReadOnlyList<string> ParagraphTexts { get; init; } = Array.Empty<string>();
+
     public int LineCount => _lineTops.Length;
     public int ParagraphCount => _paragraphTops.Length;
 
@@ -883,6 +893,16 @@ public sealed class LayoutGeometry
     }
 }
 ```
+
+**Anchors across edits (added 19 Oct 2026, live-edit fix).** `src/IluPrompter.Core/Layout/AnchorMap.cs`:
+`AnchorMap(IReadOnlyList<string> from, IReadOnlyList<string> to)` with `DocumentAnchor Map(DocumentAnchor)` (allocation-free
+after construction), `AnchorMap.Identity` and `AnchorMap.Between(LayoutGeometry from, LayoutGeometry to)` (identity for the
+same `SnapshotVersion` or when either geometry has no `ParagraphTexts`); and
+`LayoutMapping.MapPosition(LayoutGeometry from, LayoutGeometry to, AnchorMap map, double position, double readingLineY)`,
+the position in `to` that shows what `position` showed on the reading line in `from` (allocation-free). The engine uses
+both on every relayout; a surface whose picture is a different layout from the engine's (for the frame or two until it
+installs the new one) uses them to place its own picture. `ILayoutGeometryBuilder` fills `ParagraphTexts` from the laid-out
+document.
 
 ### 2.6 Core: document snapshot service
 
@@ -1992,18 +2012,25 @@ public static class ThemeResources
 
 ## 3. Threading model
 
+*(Layout thread added 19 Oct 2026, live-edit fix: before, each surface built and laid out its own FlowDocument on its own
+thread, so every edit or layout change blocked the output for 100–150 ms, about 0.5 s the first time.)*
+
 ```
  Control UI thread (STA #1, Application Dispatcher)          Output thread "ILU Output" (STA #2, own Dispatcher)
  ───────────────────────────────────────────────            ─────────────────────────────────────────────────────
  MainWindow, editor RichTextBox (live FlowDocument)          OutputWindow (borderless, topmost, no-activate)
- EditorController: TextChanged → 250 ms debounce               PrompterSurface #2: own FlowDocument from snapshot XAML
-   → ISnapshotBuilder.Build → IPromptDocumentService.Publish     rebuild (coalesced) → layout → geometry → engine.SetLayout
- PrompterPreview: PrompterSurface #1 (own FlowDocument),      CompositionTarget.Rendering (per frame):
-   rebuild on snapshot/settings → engine.SetLayout             dedupe RenderingTime → engine.Tick(now) → Y = −ReadPosition()
-   output live: repaint on FramePulse ◄──────────────────────  FramePulse after each moved frame (+ 250 ms heartbeat)
-   output not rendering: own Rendering → TickIfStale(now,     DisplaySleepGuard, FrameStats (--diag)
-     0.001) → Y = −pos (preview is the only ticker)
- MainWindow polls engine.Status at 10 Hz (DispatcherTimer)
+ EditorController: TextChanged → 250 ms debounce               PrompterSurface #2: shows the frozen PromptPicture
+   → ISnapshotBuilder.Build → IPromptDocumentService.Publish     install (≈1 ms): picture + frame + engine.SetLayout
+ PrompterPreview: PrompterSurface #1 (same frozen picture)    CompositionTarget.Rendering (per frame):
+   install on PictureReady → engine.SetLayout                  dedupe RenderingTime → engine.Tick(now)
+   output live: repaint on FramePulse ◄──────────────────────    → ReadPosition(out geometry) → Y = −pos (mapped if the
+   output not rendering: own Rendering → TickIfStale(now,          engine's layout is not this picture yet)
+     0.001) → Y = −pos (preview is the only ticker)            FramePulse after each moved frame (+ 250 ms heartbeat)
+ MainWindow polls engine.Status at 10 Hz (DispatcherTimer)    DisplaySleepGuard, FrameStats (--diag)
+            │                         ▲ PictureReady                     ▲ PictureReady
+            │      Layout thread "ILU Layout" (STA #3, own Dispatcher, below-normal priority, owned by OutputHost)
+            │      the only output FlowDocument: snapshot/settings/output size → patch the changed paragraphs (or a
+            │      full layout) → UpdateLayout → geometry → frozen per-paragraph drawings → PromptPicture
             │                                                            │
             └──────────── IScrollEngine (Core, lock + lock-free publish) ┘
                                ▲ Post(EngineCommand) from any thread
@@ -2011,25 +2038,33 @@ public static class ThemeResources
    → IInputSink.Submit (InputRouter, thread-safe) → engine.Post / output.SetBlank / AppCommandRequested
  Render thread (WPF, one per process) composes both windows.
 ```
-
 Rules:
 
 1. **Thread affinity.** Every FlowDocument, Brush (unless frozen), Window and control belongs to the thread that created
    it. Only these cross threads: immutable records (`PromptDocumentSnapshot`, `LayoutGeometry`, `EngineStatus`,
-   `PrompterSettings`, `OutputState`), the snapshot XAML string, `EngineCommand` structs and the published position.
+   `PrompterSettings`, `OutputState`), the snapshot XAML string, `EngineCommand` structs, the published position and the
+   `PromptPicture` (geometry plus **frozen** drawings, so it can be shown on any thread).
    `ThemeResources` colours are structs; its `FontFamily` objects are not DispatcherObjects and are shared.
-2. **Snapshot flow.** The editor publishes on the UI thread. `OutputHost` handles `SnapshotPublished` by storing the
-   snapshot in a field (`Interlocked.Exchange`) and `BeginInvoke`-ing one rebuild at `DispatcherPriority.Background` on
-   the output Dispatcher (skip if one is already pending). The rebuild reads the latest snapshot, so intermediate
-   versions are dropped. The preview does the same on the UI Dispatcher. Settings and output-geometry changes trigger the
-   same coalesced rebuild.
-3. **Identical layout on both surfaces.** The output size for layout is always `IOutputSurface.State.Geometry` (the
-   current display, or the last known one from settings, or 1920 × 1080). Both surfaces lay out at the same DIP width with `TextOptions.TextFormattingMode="Ideal"`,
-   the same style and the same snapshot, so line breaks are identical. The preview scales with a `RenderTransform`
-   `ScaleTransform(s)` (or `Viewbox`), never by laying out at a smaller width. Phase-0 check S7 verifies this.
-4. **Who supplies geometry.** Both surfaces call `engine.SetLayout(geometry, viewport)` after each rebuild. The engine
-   ignores a geometry whose `LayoutKey` equals the current one (viewport still updated). So the engine always has a
-   geometry, whether or not the output is open.
+2. **Snapshot flow.** The editor publishes on the UI thread. The layout thread (`PictureWorker`, started by
+   `OutputHost.InitializeAsync`) handles `SnapshotPublished`, `Settings.Changed` (output, margins, text, editor) and
+   output-size changes by `BeginInvoke`-ing one build at `DispatcherPriority.Background` on its own Dispatcher (skip if
+   one is already pending). The build reads the latest snapshot and settings, so intermediate versions are dropped, and
+   skips when the content key (layout key + ink) is unchanged. **A script edit is patched**: the snapshot XAML is split
+   into paragraphs and compared with the document on show; only changed paragraphs are built (through the factory) and
+   swapped into the live FlowDocument, and unchanged paragraphs keep their frozen drawings. A style, size or margin change
+   lays the whole script out. When a picture is ready the worker raises `PictureReady`; each started surface coalesces it
+   into one `BeginInvoke` at `Background` that installs the picture, its frame and `engine.SetLayout` in one operation.
+3. **Identical layout on both surfaces.** There is one layout for both: the output and the preview show the same frozen
+   picture. The output size for layout is always `IOutputSurface.State.Geometry` (the current display, or the last known
+   one from settings, or 1920 × 1080), laid out with `TextOptions.TextFormattingMode="Ideal"`. The preview scales with a
+   `RenderTransform` `ScaleTransform(s)` (or `Viewbox`), never by laying out at a smaller width. Phase-0 check S7 holds
+   by construction. Without an output host (tests), a surface builds its picture inline on its own thread.
+4. **Who supplies geometry.** Both surfaces call `engine.SetLayout(geometry, viewport)` when they install a picture or
+   a frame change. The engine ignores a geometry whose `LayoutKey` equals the current one (viewport still updated). So
+   the engine always has a geometry, whether or not the output is open. The two surfaces install a new picture a frame
+   or two apart: per frame each reads `ReadPosition(out geometry)` (a seqlock, consistent pair) and, if that geometry is
+   not its own picture's yet, maps the position onto its picture with `LayoutMapping` (the picture carries the
+   `AnchorMap` back to the one it replaced), so neither surface ever shows a frame at the wrong place.
 5. **Who ticks.** (Amended at integration, 19 Oct 2026, from stream C's CONTRACT-REQUEST.) The output window's Rendering
    handler calls `engine.Tick(t)` once per *new* `RenderingEventArgs.RenderingTime` (mapped to Stopwatch ticks by
    `FrameClock`). Then:
@@ -2063,10 +2098,14 @@ Rules:
     the 10 Hz status poll (a `DispatcherTimer` that only sets properties whose value changed), typing, caret blink.
     Checked at integration: stream D has no Rendering subscription, storyboard or animation; its only timers are the
     10 Hz poll, the 250 ms editor debounce and the recovery timer.
-11. **Rebuilds are never on the per-frame path.** A rebuild (new snapshot or a layout setting) runs once per change at
-    `DispatcherPriority.Background` on each surface's thread. On the output thread it blocks frames for its duration
-    (about 100 to 150 ms for the 20-page sample on this laptop, mostly `TextRange.Load` and WPF layout; the geometry
-    tables take about 10 ms), so an edit while LIVE costs a short hitch on the output once the 250 ms debounce expires.
+11. **Layout is never on the output or UI thread.** (Rewritten 19 Oct 2026.) A rebuild (new snapshot or a layout
+    setting) runs once per change on the layout thread (20-page sample, dev window: a patched edit about 15 ms and 7 MB,
+    a full layout 50–160 ms and about 19 MB). Installing the result on a surface takes 0.3–5 ms (measured: the longest
+    output-thread operation during edits and layout changes while playing is 2–6 ms, was 50–125 ms). The surface keeps
+    only the paragraphs from two screens above to three below the text area in its visual tree, so an install sends the
+    render thread a few dozen paragraph drawings, and unchanged paragraphs keep their visuals. The layout thread warms
+    up (a throwaway picture) and lays out the current script at startup, before the output is first shown, so the cold
+    first layout no longer lands on the output either.
 
 ---
 
@@ -2196,6 +2235,13 @@ only against contracts, never against another stream's internals.
       `line-strong`, highlight inks from `ThemeResources.Highlights`).
     - Then `factory.Create` → host.Document → `UpdateLayout()` → `geometryBuilder.Build` → `engine.SetLayout`. Log
       rebuilds > 50 ms.
+    - **Amended 19 Oct 2026 (live-edit fix, §3 rules 2–4 and 11):** the RichTextBox, the factory call, the layout and the
+      geometry run on the layout thread (`Surface/PictureWorker` + `PictureBuilder`, owned by `OutputHost`, offered to the
+      preview through the internal `IPictureSourceProvider` like `IFramePulse`), which also freezes each paragraph's
+      laid-out drawings into a `PromptPicture`. The surface's text-area Canvas hosts a `PicturePresenter` (one
+      `DrawingVisual` per paragraph near the view) instead of the RichTextBox; translate, snapping and hinting are
+      unchanged (hinting is set on each paragraph visual). Script edits patch the layout thread's live document (only
+      changed paragraphs are built). Margin drags in the preview apply on release.
     - `LayoutKey = $"{snapshot.Version}|{width:R}|{fontSize:R}|{spacing:R}|{face}|{weight}|{gap:R}|{alignment}|{showSections}"`
       (invariant culture).
   - **`Output/OutputHost` + `OutputWindow`:**

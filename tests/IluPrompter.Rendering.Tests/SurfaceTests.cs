@@ -68,9 +68,11 @@ public class SurfaceTests
         rig.Surface.Rebuild();
 
         var area = rig.Area;
-        Assert.Equal(area.Width, rig.Surface.Host.Width, 6);
-        Assert.Equal(area.Width, rig.Surface.Host.ActualWidth, 3);
-        Assert.True(rig.Surface.Host.ActualHeight > area.BaseLineHeight, "the host is unconstrained in height");
+        var host = ((InlinePictureSource)rig.Surface.Pictures).Builder.Host;   // the picture's layout host
+        Assert.Equal(area.Width, host.Width, 6);
+        Assert.Equal(area.Width, host.ActualWidth, 3);
+        Assert.True(host.ActualHeight > area.BaseLineHeight, "the host is unconstrained in height");
+        Assert.Equal(area.Width, rig.Surface.Presenter.Picture!.Area.Width, 6);
 
         // Every paragraph top came from a valid TextView layout and increases downwards. (GetCharacterRect is the glyph
         // box, which for a line height below the font's natural height sits a little above the line box: not exactly 0.)
@@ -98,7 +100,7 @@ public class SurfaceTests
         Assert.Equal(area.Top, Canvas.GetTop(canvas), 6);
         Assert.Equal(area.Width, canvas.Width, 6);
         Assert.Equal(area.Height, canvas.Height, 6);
-        Assert.Equal(area.Width, rig.Surface.Host.Width, 6);
+        Assert.Equal(area.Width, rig.Surface.Presenter.Picture!.Area.Width, 6);
     }
 
     [WpfFact]
@@ -358,9 +360,10 @@ public class SurfaceTests
     }
 
     [WpfFact]
-    public void Host_IsAReadOnlyInertRichTextBox()
+    public void LayoutHost_IsAReadOnlyInertRichTextBox_AndThePresenterIsInert()
     {
-        var host = new Rig().Surface.Host;
+        var surface = new Rig().Surface;
+        var host = ((InlinePictureSource)surface.Pictures).Builder.Host;
         Assert.True(host.IsReadOnly);
         Assert.False(host.Focusable);
         Assert.False(host.IsHitTestVisible);
@@ -368,7 +371,10 @@ public class SurfaceTests
         Assert.Equal(new Thickness(0), host.Padding);
         Assert.Equal(ScrollBarVisibility.Disabled, host.HorizontalScrollBarVisibility);
         Assert.Equal(ScrollBarVisibility.Disabled, host.VerticalScrollBarVisibility);
-        Assert.IsType<TranslateTransform>(host.RenderTransform);
+        Assert.Equal(TextFormattingMode.Ideal, TextOptions.GetTextFormattingMode(host));
+        Assert.False(surface.Presenter.IsHitTestVisible);
+        Assert.False(surface.Presenter.Focusable);
+        Assert.IsType<TranslateTransform>(surface.Presenter.RenderTransform);
     }
 
     [WpfFact]
@@ -377,24 +383,24 @@ public class SurfaceTests
         var rig = new Rig();
         rig.Output = new OutputGeometry(2880, 1620, 1.5, 60);   // 1920 x 1080 DIP; top margin 64 px = 42.67 DIP
         rig.Surface.Rebuild();
-        var translate = (TranslateTransform)rig.Surface.Host.RenderTransform;
+        var translate = (TranslateTransform)rig.Surface.Presenter.RenderTransform;
         var area = rig.Area;
 
         rig.Surface.SetPosition(100.3);
         Assert.Equal(-100.3, translate.Y, 9);
-        Assert.Equal(TextHintingMode.Animated, TextOptions.GetTextHintingMode(rig.Surface.Host));
+        Assert.Equal(TextHintingMode.Animated, TextOptions.GetTextHintingMode(rig.Surface.Presenter));
 
         rig.Surface.SetPosition(100.3);                 // still, frame 1
         Assert.Equal(-100.3, translate.Y, 9);
         rig.Surface.SetPosition(100.3);                 // still, frame 2: snap
         var devicePx = (area.Top + translate.Y) * 1.5;
         Assert.Equal(Math.Round(devicePx), devicePx, 6);
-        Assert.Equal(TextHintingMode.Fixed, TextOptions.GetTextHintingMode(rig.Surface.Host));
+        Assert.Equal(TextHintingMode.Fixed, TextOptions.GetTextHintingMode(rig.Surface.Presenter));
         Assert.True(Math.Abs(translate.Y + 100.3) <= 0.5 / 1.5 + 1e-9);
 
         rig.Surface.SetPosition(101.1);                 // moving again: exact and animated
         Assert.Equal(-101.1, translate.Y, 9);
-        Assert.Equal(TextHintingMode.Animated, TextOptions.GetTextHintingMode(rig.Surface.Host));
+        Assert.Equal(TextHintingMode.Animated, TextOptions.GetTextHintingMode(rig.Surface.Presenter));
     }
 
     [WpfFact]
@@ -403,8 +409,8 @@ public class SurfaceTests
         var rig = new Rig(snap: false);
         rig.Surface.Rebuild();
         for (var i = 0; i < 5; i++) rig.Surface.SetPosition(42.123);
-        Assert.Equal(-42.123, ((TranslateTransform)rig.Surface.Host.RenderTransform).Y, 9);
-        Assert.Equal(TextHintingMode.Animated, TextOptions.GetTextHintingMode(rig.Surface.Host));
+        Assert.Equal(-42.123, ((TranslateTransform)rig.Surface.Presenter.RenderTransform).Y, 9);
+        Assert.Equal(TextHintingMode.Animated, TextOptions.GetTextHintingMode(rig.Surface.Presenter));
     }
 
     [WpfFact]
@@ -413,7 +419,7 @@ public class SurfaceTests
         var rig = new Rig();
         rig.Engine.SetPosition(250);
         rig.Surface.Rebuild();
-        Assert.Equal(-250, ((TranslateTransform)rig.Surface.Host.RenderTransform).Y, 9);
+        Assert.Equal(-250, ((TranslateTransform)rig.Surface.Presenter.RenderTransform).Y, 9);
     }
 
     [WpfFact]

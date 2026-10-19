@@ -96,6 +96,10 @@ public sealed class LayoutGeometryBuilder : ILayoutGeometryBuilder
             sections.Add(new SectionMarker(section.Index, section.Name, section.ParagraphIndex, paragraphTops[section.ParagraphIndex]));
         }
 
+        // Paragraph texts (what the char offsets index) let the engine carry the reading anchor through the next edit.
+        var texts = new string[paragraphs.Count];
+        for (var p = 0; p < texts.Length; p++) texts[p] = DocumentNavigator.TextBetween(paragraphs[p].ContentStart, paragraphs[p].ContentEnd);
+
         return new LayoutGeometry(
             options.LayoutKey,
             options.Snapshot.Version,
@@ -108,7 +112,10 @@ public sealed class LayoutGeometryBuilder : ILayoutGeometryBuilder
             lines.Offsets.ToArray(),
             paragraphTops,
             sections,
-            options.Snapshot.WordCount);
+            options.Snapshot.WordCount)
+        {
+            ParagraphTexts = texts,
+        };
     }
 
     private sealed class LineTable
