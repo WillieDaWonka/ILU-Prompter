@@ -160,6 +160,12 @@ spacing:
   editor-paper-pad: 24px
   min-window-width: 1024px
   min-window-height: 600px
+  panel-tab-bar: 32px
+  controller-design-width: 320px
+  controller-design-height: 160px
+  live-panel-body: 168px
+  live-panel-body-small: 120px
+  live-panel-flyout-width: 600px
 components:
   panel:
     backgroundColor: "{colors.surface}"
@@ -1360,9 +1366,10 @@ Key pattern: `Ilu.Color.*` (Color), `Ilu.Brush.*` (SolidColorBrush), `Ilu.Font.*
 (TextBlock styles), `Ilu.Size.*` (Double), `Ilu.Radius.*` (CornerRadius), `Ilu.Pad.*` (Thickness),
 `Ilu.Motion.*` (Duration). Front-matter names map by PascalCase: `line-strong` → `Ilu.Color.LineStrong`.
 
-**Sizes to add with the live panel build.** These are not yet in the front matter, on purpose: `ThemeTokenTests`
-compares the front matter's `spacing` block with `IluTokens.xaml` both ways, so the build commit adds them to both
-together. No colour tokens are new.
+**Sizes added with the live panel build.** The six sizes below are in the front matter's `spacing` block and in
+`IluTokens.xaml` (`Ilu.Size.PanelTabBar`, `ControllerDesignWidth`, `ControllerDesignHeight`, `LivePanelBody`,
+`LivePanelBodySmall`, `LivePanelFlyoutWidth`), added in one commit because `ThemeTokenTests` compares the two both
+ways. No colour tokens are new.
 
 | Front-matter name (`spacing`) | Value | Use |
 |---|---|---|

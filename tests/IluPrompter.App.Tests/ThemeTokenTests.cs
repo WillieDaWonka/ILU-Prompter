@@ -127,7 +127,7 @@ public class ThemeTokenTests
         [
             "Ilu.Text.Title", "Ilu.Text.Heading", "Ilu.Text.Body", "Ilu.Text.Label", "Ilu.Text.Caption", "Ilu.Text.Button",
             "Ilu.Text.ButtonPrimary", "Ilu.Text.State", "Ilu.Text.Mono", "Ilu.Text.Readout", "Ilu.Text.Icon", "Ilu.Text.IconTransport", "Ilu.Text.Editor",
-            "Ilu.Button.Secondary", "Ilu.Button.Primary", "Ilu.Button.Transport", "Ilu.Button.Play", "Ilu.Button.Toolbar", "Ilu.ToggleButton.Toolbar",
+            "Ilu.Button.PanelTab", "Ilu.Button.Secondary", "Ilu.Button.Primary", "Ilu.Button.Transport", "Ilu.Button.Play", "Ilu.Button.Toolbar", "Ilu.ToggleButton.Toolbar",
             "Ilu.RadioButton.Segment", "Ilu.ToggleButton.Blank", "Ilu.Button.Chip", "Ilu.Chip", "Ilu.TextBox", "Ilu.ComboBox", "Ilu.CheckBox",
             "Ilu.RadioButton", "Ilu.Menu", "Ilu.MenuItem", "Ilu.ContextMenu", "Ilu.ToolTip", "Ilu.ScrollBar", "Ilu.ListBoxItem.Section",
             "Ilu.ListBoxItem.Nav", "Ilu.Slider.Speed", "Ilu.Panel", "Ilu.Window", "Ilu.RichTextBox.Paper",
