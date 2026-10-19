@@ -40,10 +40,10 @@ Tests: 151 in `tests/IluPrompter.Documents.Tests`, all `[WpfFact]`/`[WpfTheory]`
   the last line and END is exactly one line. `EndTop` is the top of that block; `DocumentHeight = EndTop + one line`.
 - **Anchors.** `DocumentAnchor` offsets count characters with `DocumentNavigator.TextBetween` (a `LineBreak` is CR LF,
   list markers and table separators are not counted). Paragraph indices are identical in the editor, the snapshot and the
-  output. Inside a **list item** the snapshot and output paragraph starts with the marker (`1. ` or a bullet and a space),
-  so an offset there is larger by that length than the same caret in the editor. Anything that maps an editor anchor to a
-  line (jump to caret) is off by at most the marker length in list items only. Pasting lists is rare for prompter
-  scripts; if it matters, the editor can convert pasted lists to paragraphs.
+  output. Inside a **list item** the snapshot and output paragraph starts with the marker (`1. ` or a bullet and a space)
+  as text. (Integration fix:) the navigator counts that marker for editor paragraphs inside list items too
+  (`DocumentFlattener.MarkerOf`), so an editor anchor resolves to the same text in the snapshot and output, and
+  `GetPointer` maps it back. Empty list items produce no snapshot paragraph, so paragraph indices stay equal.
 
 ## Decisions and WPF findings (all covered by tests)
 

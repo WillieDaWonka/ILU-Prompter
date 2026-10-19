@@ -69,14 +69,43 @@ internal static class DocumentFlattener
     public static FlowDocument CloneFlattened(FlowDocument source)
     {
         var result = new FlowDocument();
-        Collect(source.Blocks, result.Blocks, null);
+        Visit(source.Blocks, (paragraph, prefix) => result.Blocks.Add(CloneParagraph(paragraph, prefix)), null);
         if (result.Blocks.Count == 0) result.Blocks.Add(new Paragraph());
         return result;
     }
 
-    /// <summary>Appends flattened copies of <paramref name="blocks"/> to <paramref name="into"/>. A pending list prefix is
-    /// given to the first paragraph produced.</summary>
-    private static void Collect(BlockCollection blocks, BlockCollection into, string? pendingPrefix)
+    /// <summary>
+    /// The list marker ("1. ", "• ") that the flattened copy of <paramref name="paragraph"/> starts with, or "" when it
+    /// gets none. The navigator adds its length to editor anchors so that an anchor means the same text in the editor
+    /// and in the snapshot/output (where the marker is real text).
+    /// </summary>
+    public static string MarkerOf(FlowDocument document, Paragraph paragraph)
+    {
+        if (!IsInList(paragraph)) return "";
+        var marker = "";
+        Visit(document.Blocks, (p, prefix) =>
+        {
+            if (ReferenceEquals(p, paragraph)) marker = prefix ?? "";
+        }, null);
+        return marker;
+    }
+
+    private static bool IsInList(Paragraph paragraph)
+    {
+        for (var parent = paragraph.Parent; parent is TextElement element; parent = element.Parent)
+        {
+            if (element is ListItem) return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Visits every canonical paragraph of <paramref name="blocks"/> in navigator order (so flattened index == editor
+    /// index) with the list marker its flattened copy starts with. A pending list marker goes to the first paragraph
+    /// produced. Empty list items produce nothing (the navigator has no paragraph for them either).
+    /// </summary>
+    private static void Visit(BlockCollection blocks, Action<Paragraph, string?> visit, string? pendingPrefix)
     {
         foreach (var block in blocks)
         {
@@ -84,41 +113,35 @@ internal static class DocumentFlattener
             switch (block)
             {
                 case Paragraph paragraph:
-                    into.Add(CloneParagraph(paragraph, pendingPrefix));
+                    visit(paragraph, pendingPrefix);
                     pendingPrefix = null;
                     break;
                 case Section section:
-                    Collect(section.Blocks, into, pendingPrefix);
+                    Visit(section.Blocks, visit, pendingPrefix);
                     pendingPrefix = null;
                     break;
                 case List list:
-                    CollectList(list, into);
+                    VisitList(list, visit);
                     pendingPrefix = null;
                     break;
                 case Table table:
                     foreach (var group in table.RowGroups)
                         foreach (var row in group.Rows)
                             foreach (var cell in row.Cells)
-                                Collect(cell.Blocks, into, null);
+                                Visit(cell.Blocks, visit, null);
                     break;
             }
         }
     }
 
-    private static void CollectList(List list, BlockCollection into)
+    private static void VisitList(List list, Action<Paragraph, string?> visit)
     {
         var number = list.StartIndex < 1 ? 1 : list.StartIndex;
         foreach (var item in list.ListItems)
         {
             var prefix = PrefixFor(list.MarkerStyle, number);
             number++;
-            if (item.Blocks.Count == 0 && prefix is not null)
-            {
-                into.Add(new Paragraph(new Run(prefix.TrimEnd())));
-                continue;
-            }
-
-            Collect(item.Blocks, into, prefix);
+            Visit(item.Blocks, visit, prefix);
         }
     }
 

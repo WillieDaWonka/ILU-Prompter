@@ -162,14 +162,49 @@ public class NavigatorAndSnapshotTests
             var snapParagraph = flatParagraphs[anchor.ParagraphIndex];
             var editorBefore = DocumentNavigator.TextBetween(editorParagraph.ContentStart, pos);
 
-            // Inside a list item the snapshot paragraph starts with its marker ("1. ", "• "): offsets shift by its length.
+            // Inside a list item the snapshot paragraph starts with its marker ("1. ", "• ") as text; the editor anchor
+            // already counts it, so the same anchor resolves to the same text with no correction (integration fix).
             var prefixLength = T.Text(snapParagraph).Length - T.Text(editorParagraph).Length;
-            var snapPointer = T.Navigator.GetPointer(flat, anchor with { CharOffset = anchor.CharOffset + prefixLength });
+            var snapPointer = T.Navigator.GetPointer(flat, anchor);
             var snapBefore = DocumentNavigator.TextBetween(snapParagraph.ContentStart, snapPointer);
+            var snapAfter = DocumentNavigator.TextBetween(snapPointer, snapParagraph.ContentEnd);
+            var editorAfter = DocumentNavigator.TextBetween(pos, editorParagraph.ContentEnd);
 
             Assert.Equal(editorParagraph.Parent is ListItem, prefixLength > 0);
             Assert.Equal(T.Text(snapParagraph)[..prefixLength] + editorBefore, snapBefore);
+            Assert.Equal(editorAfter, snapAfter);
+            Assert.Equal(anchor, T.Navigator.GetAnchor(flat, snapPointer));
         }
+    }
+
+    [WpfFact]
+    public void ListAnchors_MapToTheSameOutputText_AndBackToTheSameEditorCaret()
+    {
+        var doc = new FlowDocument();
+        doc.Blocks.Add(new Paragraph(new Run("intro")));
+        var list = new List { MarkerStyle = TextMarkerStyle.Decimal, StartIndex = 9 };
+        list.ListItems.Add(new ListItem(new Paragraph(new Run("ninth item text"))));
+        var item = new ListItem(new Paragraph(new Run("tenth, first paragraph")));
+        item.Blocks.Add(new Paragraph(new Run("tenth, second paragraph")));
+        list.ListItems.Add(item);
+        list.ListItems.Add(new ListItem()); // empty item: no paragraph in the editor, so none in the snapshot
+        doc.Blocks.Add(list);
+        doc.Blocks.Add(new Paragraph(new Run("outro")));
+
+        var snap = T.Snapshots.Build(doc, 1, 20, "##");
+        var flat = T.Load(snap.FlowDocumentXaml);
+        Assert.Equal(["intro", "9. ninth item text", "10. tenth, first paragraph", "tenth, second paragraph", "outro"], T.Texts(flat));
+        Assert.Equal(T.Navigator.GetParagraphs(doc).Count, snap.ParagraphCount);
+
+        var editorParagraphs = T.Navigator.GetParagraphs(doc);
+        var caret = DocumentNavigator.PointerAtCharacter(editorParagraphs[2], "tenth, ".Length);
+        var anchor = T.Navigator.GetAnchor(doc, caret);
+        Assert.Equal(new DocumentAnchor(2, "10. tenth, ".Length), anchor);
+        Assert.Equal("first paragraph", DocumentNavigator.TextBetween(T.Navigator.GetPointer(flat, anchor), T.Navigator.GetParagraphs(flat)[2].ContentEnd));
+        Assert.Equal(0, caret.GetOffsetToPosition(T.Navigator.GetPointer(doc, anchor)));
+
+        // The second paragraph of an item gets no marker, so its offsets are unchanged.
+        Assert.Equal(new DocumentAnchor(3, 0), T.Navigator.GetAnchor(doc, editorParagraphs[3].ContentStart));
     }
 
     [WpfFact]

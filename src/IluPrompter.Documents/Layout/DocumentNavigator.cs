@@ -8,6 +8,12 @@ namespace IluPrompter.Documents;
 /// <summary>
 /// Canonical paragraph order and anchors (ARCHITECTURE §2.11). Stateless; call on the thread that owns the document.
 /// Anchors count characters the way <c>TextRange.Text</c> does (a LineBreak is two characters, "\r\n").
+/// <para>
+/// Anchors are in <b>flattened</b> coordinates: in a document that still has lists (the editor), a paragraph inside a
+/// list item counts its list marker ("1. ", "• ") first, exactly like the snapshot and output paragraph, which carry the
+/// marker as text. So the anchor of any editor caret resolves to the same text in the snapshot, the output and the
+/// engine's line table, and <see cref="GetPointer"/> maps it back.
+/// </para>
 /// </summary>
 public sealed class DocumentNavigator : IDocumentNavigator
 {
@@ -42,22 +48,27 @@ public sealed class DocumentNavigator : IDocumentNavigator
         if (index >= 0)
         {
             var paragraph = paragraphs[index];
-            if (pointer.CompareTo(paragraph.ContentStart) <= 0) return new DocumentAnchor(index, 0);
+            var marker = MarkerLength(document, paragraph);
+            if (pointer.CompareTo(paragraph.ContentStart) <= 0) return new DocumentAnchor(index, marker);
             var end = pointer.CompareTo(paragraph.ContentEnd) >= 0 ? paragraph.ContentEnd : pointer;
-            return new DocumentAnchor(index, TextBetween(paragraph.ContentStart, end).Length);
+            return new DocumentAnchor(index, marker + TextBetween(paragraph.ContentStart, end).Length);
         }
 
         // Between blocks (or inside something we skip): snap to the first paragraph that ends at or after the pointer.
         for (var i = 0; i < paragraphs.Count; i++)
         {
             if (paragraphs[i].ContentEnd.CompareTo(pointer) < 0) continue;
-            if (pointer.CompareTo(paragraphs[i].ContentStart) <= 0) return new DocumentAnchor(i, 0);
-            return new DocumentAnchor(i, TextBetween(paragraphs[i].ContentStart, pointer).Length);
+            var marker = MarkerLength(document, paragraphs[i]);
+            if (pointer.CompareTo(paragraphs[i].ContentStart) <= 0) return new DocumentAnchor(i, marker);
+            return new DocumentAnchor(i, marker + TextBetween(paragraphs[i].ContentStart, pointer).Length);
         }
 
         var last = paragraphs[^1];
-        return new DocumentAnchor(paragraphs.Count - 1, TextBetween(last.ContentStart, last.ContentEnd).Length);
+        return new DocumentAnchor(paragraphs.Count - 1, MarkerLength(document, last) + TextBetween(last.ContentStart, last.ContentEnd).Length);
     }
+
+    /// <summary>Length of the list marker the flattened copy of this paragraph starts with (0 outside lists).</summary>
+    private static int MarkerLength(FlowDocument document, Paragraph paragraph) => DocumentFlattener.MarkerOf(document, paragraph).Length;
 
     public TextPointer GetPointer(FlowDocument document, DocumentAnchor anchor)
     {
@@ -65,7 +76,7 @@ public sealed class DocumentNavigator : IDocumentNavigator
         var paragraphs = GetParagraphs(document);
         if (paragraphs.Count == 0) return document.ContentStart.GetInsertionPosition(LogicalDirection.Forward);
         var paragraph = paragraphs[Math.Clamp(anchor.ParagraphIndex, 0, paragraphs.Count - 1)];
-        return PointerAtCharacter(paragraph, anchor.CharOffset);
+        return PointerAtCharacter(paragraph, Math.Max(0, anchor.CharOffset - MarkerLength(document, paragraph)));
     }
 
     /// <summary>
