@@ -1,0 +1,112 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1240 900" width="1240" height="900">
+  <!--
+    ILU Prompter - live panel (D7) layout drafts. DESIGN.md "Live panel" and "Controller drawing".
+    Frame 1: Wide (720 column, 696 inner), panel open, Controller tab, large body (drawing 320 x 160 + info column 360).
+    Frame 2: Wide, panel hidden: the 32 px bar alone; last input on the right of the bar.
+    Frame 3: Compact (480 column), bar at the foot of the column, body open as a flyout over the editor (600 wide).
+    (The small inline body - drawing at 0.75 = 240 x 120 beside a 204 info column - is specified in DESIGN.md, not drawn.)
+    Text sizes are DIP; hex values are the DESIGN.md tokens, for previewing only.
+  -->
+  <style>
+    .page{fill:#0B0D12}
+    .canvas{fill:#111217}
+    .surface{fill:#181B1F}
+    .raised{fill:#22252B;stroke:#6A707C;stroke-width:1}
+    .line{stroke:#262A31;stroke-width:1}
+    .ls{fill:none;stroke:#6A707C;stroke-width:1}
+    .ul{fill:#ECECF4}
+    .t-head{font:600 14px Poppins,'Segoe UI',sans-serif;fill:#ECECF4}
+    .t-head-m{font:600 14px Poppins,'Segoe UI',sans-serif;fill:#8F8F9C}
+    .t-label{font:500 13px Poppins,'Segoe UI',sans-serif;fill:#CCCCDC}
+    .t-label-m{font:500 13px Poppins,'Segoe UI',sans-serif;fill:#8F8F9C}
+    .t-label-s{font:500 13px Poppins,'Segoe UI',sans-serif;fill:#ECECF4}
+    .t-cap{font:400 13px Poppins,'Segoe UI',sans-serif;fill:#8F8F9C}
+    .t-mono{font:500 14px 'DM Mono',Consolas,monospace;fill:#CCCCDC}
+    .t-mono-m{font:500 14px 'DM Mono',Consolas,monospace;fill:#8F8F9C}
+    .t-icon{font:16px 'Segoe Fluent Icons','Segoe MDL2 Assets',sans-serif;fill:#CCCCDC}
+    .note{font:400 12px 'Segoe UI',sans-serif;fill:#5794F2}
+    .dim{fill:none;stroke:#5794F2;stroke-width:1;stroke-dasharray:3 3}
+    .ph{fill:#181B1F;stroke:#3D434D;stroke-width:1;stroke-dasharray:4 4}
+    .chip-att{fill:#D9981F}
+    .t-chip{font:600 13px Poppins,'Segoe UI',sans-serif;fill:#111217}
+    .bat{fill:none;stroke:#8F8F9C;stroke-width:1}
+    .batseg{fill:#CCCCDC}
+  </style>
+  <rect class="page" width="1240" height="900"/>
+
+  <!-- ===================== Frame 1: Wide, open, Controller tab ===================== -->
+  <text class="note" x="20" y="24">1  Wide (live column 720, inner 696): panel open, Controller tab, large body. D7 = 1 + 32 bar + 8 + 168 body = 209</text>
+  <g transform="translate(20 40)">
+    <rect class="surface" x="-12" y="-12" width="720" height="245"/>
+    <line class="line" x1="0" y1="0.5" x2="696" y2="0.5"/>
+    <!-- bar y 1..33 -->
+    <text class="t-head" x="12" y="22">Controller</text>
+    <rect class="ul" x="0" y="31" width="96" height="2"/>
+    <text class="t-head-m" x="108" y="22">Output layout</text>
+    <line class="line" x1="0" y1="32.5" x2="696" y2="32.5"/>
+    <!-- hide toggle 32 x 32 -->
+    <rect class="ls" x="664.5" y="0.5" width="31" height="31" rx="4" style="stroke:#262A31"/>
+    <path d="M 674 13 L 680 19 L 686 13" style="fill:none;stroke:#CCCCDC;stroke-width:1.5"/>
+    <!-- body y 41..209 -->
+    <image href="controller-xbox.svg" x="0" y="45" width="320" height="160"/>
+    <!-- info column x 336..696 -->
+    <text class="t-label" x="336" y="55">Xbox controller · player 1</text>
+    <rect class="bat" x="586.5" y="45.5" width="20" height="10" rx="1"/><rect x="606.5" y="48.5" width="2" height="4" style="fill:#8F8F9C"/>
+    <rect class="batseg" x="589" y="48" width="4" height="5"/><rect class="batseg" x="594.5" y="48" width="4" height="5"/><rect class="batseg" x="600" y="48" width="4" height="5"/>
+    <text class="t-cap" x="614" y="55">Battery full</text>
+    <!-- rows, 22 each, from y 87 -->
+    <text class="t-label-m" x="336" y="102">RT</text><text class="t-label-s" x="424" y="102">Speed forward</text><text class="t-mono" x="696" y="102" text-anchor="end">62 %</text>
+    <text class="t-label-m" x="336" y="124">LT</text><text class="t-label-m" x="424" y="124">Speed reverse</text><text class="t-mono-m" x="696" y="124" text-anchor="end">0 %</text>
+    <text class="t-label-m" x="336" y="146">A</text><text class="t-label-s" x="424" y="146">Play / pause</text>
+    <text class="t-cap" x="336" y="196">Last: A · Play / pause</text>
+    <!-- dimension notes -->
+    <rect class="dim" x="0" y="45" width="320" height="160"/>
+    <text class="note" x="712" y="60">drawing 320 × 160</text>
+    <text class="note" x="712" y="78">info column 360:</text>
+    <text class="note" x="712" y="96">name 88 · action flex · value 64</text>
+    <text class="note" x="712" y="114">persistent rows: bound axes, wheel</text>
+    <text class="note" x="712" y="132">transient rows: lit buttons (max 2)</text>
+  </g>
+
+  <!-- ===================== Frame 2: Wide, hidden ===================== -->
+  <text class="note" x="20" y="316">2  Wide, panel hidden: the bar stays where it was; the space below stays empty (the preview does not grow)</text>
+  <g transform="translate(20 332)">
+    <rect class="surface" x="-12" y="-12" width="720" height="80"/>
+    <line class="line" x1="0" y1="0.5" x2="696" y2="0.5"/>
+    <text class="t-head-m" x="12" y="22">Controller</text>
+    <text class="t-head-m" x="108" y="22">Output layout</text>
+    <text class="t-cap" x="652" y="21" text-anchor="end">Last: A · Play / pause</text>
+    <path d="M 674 19 L 680 13 L 686 19" style="fill:none;stroke:#CCCCDC;stroke-width:1.5"/>
+    <line class="line" x1="0" y1="32.5" x2="696" y2="32.5"/>
+    <text class="note" x="712" y="22">no underline while hidden; chevron points up</text>
+  </g>
+
+  <!-- ===================== Frame 3: Compact, bar + flyout ===================== -->
+  <text class="note" x="20" y="446">3  Compact (column 480): the bar at the foot of the column, the body as a flyout over the editor's right edge</text>
+  <g transform="translate(20 462)">
+    <!-- editor (placeholder) -->
+    <rect class="ph" x="0" y="0" width="660" height="400"/>
+    <text class="t-cap" x="16" y="24">editor</text>
+    <!-- live column -->
+    <rect class="surface" x="668" y="0" width="480" height="400"/>
+    <rect class="ph" x="680" y="12" width="456" height="300"/>
+    <text class="t-cap" x="696" y="36">chips · preview · transport · speed · mode · readouts</text>
+    <!-- bar at the foot, y 356..388 -->
+    <line class="line" x1="680" y1="355.5" x2="1136" y2="355.5"/>
+    <text class="t-head" x="692" y="377">Controller</text>
+    <rect class="ul" x="680" y="386" width="96" height="2"/>
+    <text class="t-head-m" x="788" y="377">Output layout</text>
+    <path d="M 1114 368 L 1120 374 L 1126 368" style="fill:none;stroke:#CCCCDC;stroke-width:1.5"/>
+    <!-- flyout: right edge at the column's left edge - 8 (x 660), bottom = bar bottom (388); 600 x 228 -->
+    <rect class="raised" x="52.5" y="160.5" width="599" height="227" rx="3"/>
+    <text class="t-head" x="64" y="190">Controller</text>
+    <text class="t-icon" x="624" y="190">&#xE711;</text>
+    <image href="controller-xbox.svg" x="64" y="212" width="320" height="160" style="opacity:1"/>
+    <text class="t-label" x="400" y="222">Xbox controller · player 1</text>
+    <text class="t-label-m" x="400" y="268">RT</text><text class="t-label-s" x="472" y="268">Speed forward</text><text class="t-mono" x="640" y="268" text-anchor="end">62 %</text>
+    <text class="t-label-m" x="400" y="290">LT</text><text class="t-label-m" x="472" y="290">Speed reverse</text><text class="t-mono-m" x="640" y="290" text-anchor="end">0 %</text>
+    <text class="t-label-m" x="400" y="312">A</text><text class="t-label-s" x="472" y="312">Play / pause</text>
+    <text class="t-cap" x="400" y="362">Last: A · Play / pause</text>
+    <text class="note" x="52" y="150">flyout: raised, line-strong edge, radius 3, padding 12; title row 28 with Hide (×); no shadow</text>
+  </g>
+</svg>

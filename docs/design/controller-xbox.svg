@@ -1,0 +1,89 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 160" width="640" height="320">
+  <!--
+    ILU Prompter - controller drawing: Xbox controller (XInput). DESIGN.md "Controller drawing".
+    Design box 320 x 160 DIP at scale 1.0 (large body); 0.75 for the small body.
+    Element ids are ControlIds (src/IluPrompter.Core/Contracts/Input.cs). Classes are roles; each maps to one token:
+      body  = stroke line-strong 1.5, no fill          (Ilu.Brush.LineStrong)
+      inert = stroke line-strong 1, no fill            (parts that are not inputs: Guide button)
+      ctl   = fill raised, stroke text-muted 1.5        (a bound control at rest)
+      unb   = no fill, stroke disabled 1                (an unbound control at rest: dim)
+      lit   = fill text, stroke text 1.5                (a bound control lit: pressed or within its hold)
+      flash = fill line-strong, stroke line-strong 1.5  (an unbound control lit: the neutral flash)
+      dz    = stroke line-strong 1, dash 2 2            (stick deadzone ring)
+      ind   = fill text                                 (analogue indicator of a bound control, outside the deadzone)
+      ind-idle = fill text-muted                        (bound, inside the deadzone)
+      ind-unb  = fill line-strong                       (unbound)
+      letter   = Poppins 13 / 500, text-muted (bound) or disabled (unbound); on a lit button: canvas. Large drawing only.
+    The ground rect is for previewing only: in the app the drawing has no ground and sits on the panel.
+    Sample state shown: A pressed (Play / pause), RT at 62 %, left stick (unbound) moved up-right, everything else at rest.
+    The hex values below are the DESIGN.md tokens, for previewing this file only.
+  -->
+  <style>
+    .ground{fill:#181B1F}
+    .body{fill:none;stroke:#6A707C;stroke-width:1.5;stroke-linejoin:round}
+    .inert{fill:none;stroke:#6A707C;stroke-width:1}
+    .ctl{fill:#22252B;stroke:#8F8F9C;stroke-width:1.5}
+    .unb{fill:none;stroke:#5A5E68;stroke-width:1}
+    .lit{fill:#CCCCDC;stroke:#CCCCDC;stroke-width:1.5}
+    .flash{fill:#6A707C;stroke:#6A707C;stroke-width:1.5}
+    .dz{fill:none;stroke:#6A707C;stroke-width:1;stroke-dasharray:2 2}
+    .ind{fill:#CCCCDC}
+    .ind-idle{fill:#8F8F9C}
+    .ind-unb{fill:#6A707C}
+    .tick{stroke:#8F8F9C;stroke-width:1}
+    .letter{font-family:Poppins,'Segoe UI',sans-serif;font-weight:500;font-size:13px;fill:#8F8F9C;text-anchor:middle;dominant-baseline:central}
+    .letter-lit{fill:#111217}
+    .letter-unb{fill:#5A5E68}
+  </style>
+  <rect class="ground" width="320" height="160"/>
+
+  <!-- Body outline -->
+  <path id="Body" class="body" d="M 96 28 C 124 20 196 20 224 28 C 262 36 290 70 300 118 C 306 146 286 158 266 148 C 252 140 242 122 224 112 L 96 112 C 78 122 68 140 54 148 C 34 158 14 146 20 118 C 30 70 58 36 96 28 Z"/>
+
+  <!-- Triggers: vertical meters, 12 x 60, filled from the bottom by value 0..1. Deadzone tick at 1 - deadzone (0.12 => y 56.8). -->
+  <rect id="LeftTrigger" class="ctl" x="22" y="4" width="12" height="60" rx="2"/>
+  <line class="tick" x1="18" y1="56.8" x2="38" y2="56.8"/>
+  <rect id="RightTrigger" class="ctl" x="286" y="4" width="12" height="60" rx="2"/>
+  <!-- RT fill at 0.62: height 0.62 x 60 = 37.2, y = 64 - 37.2 -->
+  <rect id="RightTrigger.Fill" class="ind" x="286" y="26.8" width="12" height="37.2" rx="2"/>
+  <line class="tick" x1="282" y1="56.8" x2="302" y2="56.8"/>
+
+  <!-- Bumpers -->
+  <rect id="LeftShoulder" class="ctl" x="60" y="10" width="60" height="10" rx="5"/>
+  <rect id="RightShoulder" class="ctl" x="200" y="10" width="60" height="10" rx="5"/>
+
+  <!-- Guide button: not an XInput input, drawn inert -->
+  <circle id="Guide" class="inert" cx="160" cy="36" r="8"/>
+
+  <!-- View (Back) and Menu (Start) -->
+  <rect id="Back" class="ctl" x="138" y="50" width="12" height="8" rx="4"/>
+  <rect id="Start" class="unb" x="170" y="50" width="12" height="8" rx="4"/>
+
+  <!-- Left stick: ring r 18 at (92,58); deadzone ring r = max(3, 18 x deadzone); dot r 5 travels 13:
+       dot = (92 + 13x, 58 - 13y), (x,y) clamped to the unit circle. Unbound by default (LeftThumbY role None). -->
+  <circle id="LeftThumb" class="unb" cx="92" cy="58" r="18"/>
+  <circle class="dz" cx="92" cy="58" r="4.3"/>
+  <circle id="LeftThumb.Dot" class="ind-unb" cx="95.9" cy="51.5" r="5"/>
+
+  <!-- D-pad at (124,90): four arms 10 wide, 11 long, each its own control; centre square inert -->
+  <rect id="DPadUp" class="ctl" x="119" y="74" width="10" height="11" rx="1.5"/>
+  <rect id="DPadDown" class="ctl" x="119" y="95" width="10" height="11" rx="1.5"/>
+  <rect id="DPadLeft" class="ctl" x="108" y="85" width="11" height="10" rx="1.5"/>
+  <rect id="DPadRight" class="ctl" x="129" y="85" width="11" height="10" rx="1.5"/>
+  <rect class="inert" x="119" y="85" width="10" height="10"/>
+
+  <!-- Right stick: ring r 18 at (196,90), same rules. Unbound by default. -->
+  <circle id="RightThumb" class="unb" cx="196" cy="90" r="18"/>
+  <circle class="dz" cx="196" cy="90" r="4.8"/>
+  <circle id="RightThumb.Dot" class="ind-unb" cx="196" cy="90" r="5"/>
+
+  <!-- Face buttons around (230,56), r 9: Y top, A bottom, X left, B right. Letters only in the large drawing. -->
+  <circle id="Y" class="unb" cx="230" cy="40" r="9"/>
+  <text class="letter letter-unb" x="230" y="40">Y</text>
+  <circle id="X" class="unb" cx="214" cy="56" r="9"/>
+  <text class="letter letter-unb" x="214" y="56">X</text>
+  <circle id="B" class="unb" cx="246" cy="56" r="9"/>
+  <text class="letter letter-unb" x="246" y="56">B</text>
+  <circle id="A" class="lit" cx="230" cy="72" r="9"/>
+  <text class="letter letter-lit" x="230" y="72">A</text>
+</svg>

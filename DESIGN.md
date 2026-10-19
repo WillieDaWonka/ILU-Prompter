@@ -362,7 +362,8 @@ ring, voice rules, "no native white control"). Every place this file departs fro
 - Bright green (`live`) appears in two places only: the output chip while the presenter can see the script,
   and the Play button while the script is scrolling.
 - Status is a filled chip with a glyph and a word in capitals, from the house state colours.
-- The control window never moves; only the script moves, on the output and in its preview.
+- The control window never moves; only the script moves, on the output and in its preview. The controller drawing
+  (live panel, D7) changes in steps as you press and turn, but nothing in the control window slides, fades or loops.
 
 ## Colors
 
@@ -515,9 +516,11 @@ installed font…" is allowed but shows "▲ Check bold and italic on the output
 
 | Tier | Window width (DIP) | Typical case | Sections | Live column | Transport labels |
 |---|---|---|---|---|---|
-| Wide | 1600 and over | 1920 × 1080 at 100 % | 240 px panel | 720 px, with the margin editor | icon + word |
-| Compact | 1200 to 1599 | 1366 × 768 at 100 %, 1920 × 1080 at 125 % | 44 px rail, list as a flyout | 480 px, margin editor in Settings | icon only, tooltips |
-| Narrow | 1024 to 1199 | 1366 × 768 at 125 % (1093 × 614 DIP) | rail | 440 px, chips move to the app bar, readouts into the status bar | icon only |
+| Wide | 1600 and over | 1920 × 1080 at 100 % | 240 px panel | 720 px, live panel (Controller / Output layout) inline | icon + word |
+| Compact | 1200 to 1599 | 1366 × 768 at 100 %, 1920 × 1080 at 125 % | 44 px rail, list as a flyout | 480 px, live panel inline small, or its bar plus a flyout | icon only, tooltips |
+| Narrow | 1024 to 1199 | 1366 × 768 at 125 % (1093 × 614 DIP) | rail | 440 px, chips move to the app bar, readouts into the status bar, live panel bar plus a flyout | icon only |
+
+Which live panel form a window gets depends on the height left in the column, not on the tier; see "Live panel (D7)".
 
 Minimum window 1024 × 600 DIP. The live column never scrolls; the editor and section list scroll inside their
 panels. The window opens maximised on the laptop screen and remembers its size.
@@ -555,9 +558,9 @@ x=0                                                                             
 | |             | | |                                               | | |               [Blank output]  | |
 | |             | | |                                               | | |D6 Line 112/384 · 3/7  6m:42s  | |
 | |             | | |                                               | | |-------------------------------| |
-| |-------------| | |                                               | | |D7 OUTPUT LAYOUT               | |
-| |[Add section]| | |                                               | | | Lines 8 [-][+]  Spacing 1.3   | |
-| +-------------+ | +-----------------------------------------------+ | | margin editor (see below)     | |
+| |-------------| | |                                               | | |D7 Controller Output layout [v]| |
+| |[Add section]| | |                                               | | | [ drawing   ] Xbox controller | |
+| +-------------+ | +-----------------------------------------------+ | | [ 320 x 160 ] A  Play / pause | |
 |                 |                                                   | +-------------------------------+ |
 +--------------------------------------------------------------------------------------------------------+
 | G ⌨ Transport keys | Line 112 of 384 · Section 3 of 7 Speaker 1 | 1 912 words | Display 2 · Xbox 70 % 28 |
@@ -569,7 +572,7 @@ x=0                                                                             
 | A app bar | 1920 × 44, `backdrop` | menus; script name and "Saved 14:02"; "Show output" (secondary, F11) and Settings (icon button, Ctrl+,) on the right |
 | B sections | 240 × 928, `panel` | title "Sections" with a + icon; section rows; "Add section" (secondary, 44) pinned at the bottom |
 | C editor | 928 × 928, `panel` | toolbar (E, 44 tall) above the paper (F, `script-paper`, 24 padding, scrolls) |
-| D live column | 720 × 928, `panel` | D1 chips (36), D2 preview (696 × 392 + 24 caption), D3 transport (52 + 18 captions), D4 speed (44), D5 mode and Blank (36), D6 readouts (32), D7 output layout (the rest, about 230) |
+| D live column | 720 × 928, `panel` | D1 chips (36), D2 preview (696 × 392 + 24 caption), D3 transport (52 + 18 captions), D4 speed (44), D5 mode and Blank (36), D6 readouts (32), D7 live panel (the rest, about 230 not LIVE, 212 LIVE: tab bar 32 + body 168) |
 | G status bar | 1920 × 28, `backdrop` | key focus, position, word count, output display, controller |
 
 Proportions: sections 12.5 %, editor about 48 %, live column 37.5 % of the width. The live column is fixed; the
@@ -593,7 +596,7 @@ editor takes whatever is left.
 |  | |                                         | | [−] [=====|==●=====] [+]  4.5         |
 |  | |                                         | | [Display | Line]        [Blank]       |
 |  | |                                         | | Line 112/384 · 3/7     6m:42s left    |
-|  | +-----------------------------------------+ |                                       |
+|  | +-----------------------------------------+ | Controller  Output layout        [^]  |
 +----------------------------------------------------------------------------------------+
 | ⌨ Transport keys | Line 112 of 384 · Section 3 of 7 | Display 2 · Xbox 70 %        28   |
 +----------------------------------------------------------------------------------------+
@@ -603,13 +606,15 @@ What changes from Wide, in this order as the window narrows:
 1. **Below 1600:** sections become a 44 px rail (≡ opens the list as a 280 px flyout over the editor, Esc or a
    jump closes it); the live column drops to 480; transport captions hide (icons keep tooltips with the
    shortcut); the speed readout loses "≈ 140 wpm" (it moves to the readout tooltip); the mode switch reads
-   "Display" | "Line"; "Blank output" reads "Blank"; D7 output layout moves to Settings › Output. The editor
-   toolbar folds Find and zoom into a ⋯ overflow menu.
+   "Display" | "Line"; "Blank output" reads "Blank"; the D7 live panel's body goes small, or, if the column is too
+   short, into a flyout over the editor with only its 32 px tab bar left in the column (see "Live panel (D7)"). The
+   editor toolbar folds Find and zoom into a ⋯ overflow menu.
 2. **Below 1200:** the live column drops to 440 (preview 416 × 234); the two chips move into the app bar beside
    the script name; the D6 readouts move into the status bar, except time remaining, which stays as `readout` at
    the right of the speed row.
-3. **Never:** the preview, Play, the speed control or the chips never hide or scroll. If the window is smaller
-   than 1024 × 600 DIP, Windows stops the resize there.
+3. **Never:** the preview, Play, the speed control or the chips never hide or scroll. The live panel's tab bar never
+   hides either; when the column is short, the transport captions and then the preview's output caption give way to
+   it (see "Live panel (D7)"). If the window is smaller than 1024 × 600 DIP, Windows stops the resize there.
 
 ## Elevation & Depth
 
@@ -745,7 +750,262 @@ At the end it reads `0m:00s` and "At end".
   what it is over. Middle-click over the preview plays and pauses.
 - Caption under the frame (`caption`): "Output · 1920 × 1080 · 60 Hz · Display 2 (LG 55UH5)".
 
-### Margin editor with link toggle (D7, and Settings › Output)
+### Live panel (D7): Controller and Output layout
+
+The foot of the live column is one panel with two tabs and a hide control. It replaces the old fixed "Output
+layout" block. Drafts: `docs/design/live-panel-layout.svg`.
+
+```
+ ────────────────────────────────────────────────────────────────────  1 px line
+   Controller   Output layout                                    [v]   tab bar, 32
+ ━━━━━━━━━━━━━─────────────────────────────────────────────────────────  2 px text-strong under the open tab
+ +-- drawing 320 x 160 --+  Xbox controller · player 1   ▮▮▮ Battery full
+ |                       |  RT     Speed forward                  62 %
+ |  (pressed controls    |  LT     Speed reverse                   0 %
+ |   lit, sticks and     |  A      Play / pause
+ |   triggers live)      |
+ +-----------------------+  Last: A · Play / pause
+```
+
+**Tabs, order and default.** Two tabs, left to right: **Controller**, **Output layout**. First run: Controller, panel
+open. Controller comes first because it is the show-time view, glanced at to confirm "did my press land, and what
+did it do?". Output layout is set-up work done before doors, and it already has two other homes: dragging the
+margins on the preview, and Settings › Output. The tab you leave open is remembered, so after set-up the panel stays
+where you put it.
+
+**Tab bar** (32 px, on `surface`, a 1 px `line` rule above and below):
+- Tabs are text buttons, 32 tall, padding 0 12, both in `heading` (Poppins 14 / 600) so their width never changes.
+  Open tab: `text-strong`, with a 2 px `text-strong` bar along its bottom edge (the settings navigation's selected
+  bar, turned on its side). The other tab: `text-muted`; hover `text` on `raised`. While the panel is hidden neither
+  tab has the bar and both are `text-muted`.
+- Hide / show: a 32 × 32 `toolbar-button` at the right end; ChevronDown (E70D) while open, ChevronUp (E70E) while
+  hidden. Tooltip "Hide this panel (F9)" / "Show this panel (F9)".
+- While the controller drawing is not on screen (panel hidden, Output layout open, or the flyout closed), the
+  last-input line sits in the bar, right-aligned between the tabs and the toggle, in `caption`: "Last: A · Play /
+  pause". It clips at its left edge, with the full text in its tooltip. While the drawing is on screen the line is in
+  the panel instead.
+- Clicking a tab while hidden opens the panel on that tab. Clicking the open tab does nothing: it never hides the
+  panel by accident.
+
+**What hiding frees.** Nothing above the bar moves: the bar stays where it was and the space below it stays empty
+`surface`. The preview does not grow. Its size follows the column width and the output's shape, and resizing it
+mid-show would rescale what you are watching and move the transport under your pointer (open question 5).
+
+**Where the body goes.** Decided from the window size only, never from state, with the LIVE caption under the
+preview counted as if it were showing, so going LIVE never moves or reshapes the panel:
+
+| Height left below D6 in the column | Body | Drawing |
+|---|---|---|
+| 209 or more (rule 1 + bar 32 + gap 8 + body 168) | inline, under the bar | large: 320 × 160 at 1.0 |
+| 161 to 208 (body 120) | inline, under the bar | small: 240 × 120 (0.75) |
+| less than 161 | the bar only; the body opens as a flyout over the editor | large if the flyout is 600 wide, else small |
+
+From the reference windows (estimates; measure, don't hard-code): 1920 × 1080 at 100 % (Wide) inline large; 1920 ×
+1080 at 125 % (Compact) inline small; 1366 × 768 at 100 % (Compact) and at 125 % (Narrow): bar plus flyout.
+
+**The bar always fits.** If the column has less than 40 px (bar 32 + gap 8) left for it, these give way, in order,
+until it fits: (1) the transport captions hide, as at Compact; (2) the preview's output caption ("Output · 1920 ×
+1080 · 60 Hz · Display 2 (LG 55UH5)") moves into the preview's tooltip; the LIVE caption ("Changes show on Display 2
+now") stays. Nothing else gives way. By the estimates, 1600 × 900 (Wide), 1366 × 768 (Compact), 1093 × 614 (Narrow)
+and the 1024 × 600 minimum all fit after step 2 at most.
+
+**Flyout** (when the body can't be inline):
+- Over the editor's right edge: its right edge 8 px left of the live column, its bottom level with the bar's
+  bottom. Width min(600, editor width − 16); the large drawing when its inner width is at least 576, else the small
+  one. Height: title row 28 + 8 + body + padding.
+- The menu and flyout skin: `raised`, 1 px `line-strong`, radius 3, padding 12, no shadow. Title row: the open
+  tab's name in `heading`, and at the right a 32 × 32 Hide button (Cancel, E711; tooltip "Hide this panel (F9)").
+  Controls drawn on `raised` take `pressed` as their rest fill (see "Controller drawing").
+- Non-modal and quiet: it never takes focus; a click elsewhere doesn't close it (it is a monitor you keep open
+  through a show); Esc doesn't close it (Esc keeps its transport meaning, pause).
+- It hides while the caret is in the script (keys "Typing") and comes back when the keys return to the transport,
+  so it never covers the line you are typing.
+- It never opens by itself: it is closed at every launch and whenever the window changes size, and opens only from
+  a tab, the toggle or F9.
+
+**Remembered** (app settings, not per script, in `ControlWindow`): `LivePanelTab` (`Controller` | `OutputLayout`,
+default `Controller`) and `LivePanelOpen` (default true). An inline body follows `LivePanelOpen` at launch; the
+flyout ignores it at launch (above), but opening or hiding the flyout writes it. This is a contract change to
+ARCHITECTURE §2.8 `WindowSettings`.
+
+**Keyboard.**
+- **F9** (global, works while typing): show or hide the panel. **Ctrl+F9** (global): open the other tab, showing the
+  panel if it is hidden. Shell shortcuts like Ctrl+, (not `PrompterCommand`s), listed on Settings › Shortcuts.
+- Focus order, after Blank output: the Controller tab, the Output layout tab, Hide / show, then the open tab's
+  fields (Output layout only; the drawing is a readout and takes no focus).
+- The tabs and the toggle answer Enter and the mouse only. Space, the arrows, Home, Page Up / Page Down, Ctrl+Up /
+  Ctrl+Down, B, M and 0 keep their transport meanings with focus on a tab, because transport keys are handled at
+  window level first. So the WPF `TabControl`'s own keys (arrows, Home / End, Ctrl+Tab, Ctrl+Page Up / Down) are not
+  used: build the tabs as buttons, or remove the `TabControl`'s key handling.
+- In the Output layout number boxes, keys work as in any text input (`app:text`: only the global shortcuts reach
+  the transport), as before.
+
+**Screen readers.** The bar is a tab list named "Live panel" with two tabs; the toggle's name is its tooltip without
+the key. The drawing is named "Controller drawing: Xbox controller" (and so on); the panel's text is plain text. The
+last-input line is not a live region: it would speak over every press.
+
+### Output layout tab (D7)
+
+The old D7 content, without its title (the tab is the title):
+- **Large body** (168 tall: inline large, or a 600 px flyout): Lines visible (`[−] 8 [+]`) and Line spacing stacked
+  in a 200 px column on the left; on the right the margin diagram with its four number boxes and the link toggle
+  (152 tall: Top 32, 8, diagram 72, 8, Bottom 32).
+- **Small body** (120 tall, no diagram): three rows of 32, 8 apart: `Lines [ 8 ]  Spacing [1.30]  [⛓ Link]` /
+  `Left [160] px  Right [160] px` / `Top [ 64] px  Bottom [ 64] px`. The link toggle is the 32 px toolbar toggle,
+  chain icon with its word beside it ("Link" / "Linked").
+- Settings › Output keeps the full margin editor, as before.
+
+### Controller drawing (D7, Controller tab)
+
+A live, flat line drawing of the controller chosen in Settings › Controller, lit where you press it, with what each
+press did. Exact geometry, with every part's `id` set to its ControlId: `docs/design/controller-mouse.svg`,
+`controller-xbox.svg`, `controller-shuttlexpress.svg`, `controller-shuttlepro.svg` (the hex values inside them are
+these tokens, for previewing only).
+
+**Body layout.** The drawing on the left, the info column on its right, both top-aligned:
+
+| Body | Size | Drawing | Info column |
+|---|---|---|---|
+| Large | W × 168 (W = 696 inline at Wide, 576 in a 600 px flyout) | 320 × 160 at 1.0, at (0, 4) | x 336 to W: device line 20, detail line 18, gap 8, up to 4 rows of 22, gap 8, last input 18 |
+| Small | W × 120 (W = 456 Compact, 416 Narrow) | 240 × 120 at 0.75, at (0, 0) | x 252 to W: device line 20, up to 3 rows of 22, gap 8, last input 18; no detail line |
+
+**Building it.** One `Canvas` per controller in a 320 × 160 design box, each part a `Path`, `Rectangle`, `Ellipse`
+or `Line` named by its ControlId (the SVG `id`s, with `.Fill`, `.Dot`, `.Arc`, `.Now`, `.Up`, `.Down`, `.Dimple` for
+the moving parts), scaled by one `ScaleTransform` (1.0 or 0.75); stroke widths scale with it. No text inside the
+scaled canvas, because text never shrinks below 13 DIP. The one exception is the Xbox A / B / X / Y letters, which
+are `TextBlock`s placed over the button centres in the large drawing only (`label`, Poppins 13 / 500). The drawing
+has no ground of its own; it sits on the panel. Which drawing: MouseWheel gives the mouse; Xbox gives the Xbox; for
+JogShuttle, the ShuttlePRO v2 when the device's name (`DeviceStatus.DisplayName`) contains "PRO" or any button above
+5 has been seen, otherwise the ShuttleXpress.
+
+**Roles and tokens** (no new colour tokens, no hex outside `IluTokens.xaml`):
+
+| Role | Fill | Stroke | Used for |
+|---|---|---|---|
+| Body | none | `line-strong` 1.5 | the device outline |
+| Inert | none | `line-strong` 1 | parts that aren't inputs: the Xbox Guide button, the D-pad centre, the mouse's own left and right buttons |
+| Bound, at rest | one step above the ground: `raised` on `surface`, `pressed` in the flyout | `text-muted` 1.5 | a control that does something in the current mode |
+| Unbound, at rest | none | `disabled` 1 | dim: a control that does nothing (its letter `disabled`) |
+| Lit, bound | `text` | `text` 1.5 | pressed, or inside its hold (its letter `canvas`) |
+| Lit, unbound: the neutral flash | `line-strong` | `line-strong` 1.5 | an input that does nothing |
+| Indicator | `text` when bound and outside the deadzone; `text-muted` when inside it; `line-strong` when unbound | | stick dots, trigger fills, the ring's arc |
+| Deadzone | none | `line-strong` 1, dash 2 2 | stick deadzone rings; the trigger deadzone tick is `text-muted` 1, solid |
+| Position now | | `text-strong` 3, round caps | the shuttle ring's current tick |
+| Missing | none | `disabled` 1 on every part | the whole drawing while the controller is MISSING: no fills, nothing lit |
+
+Never green (`live` stays for LIVE and scrolling), never `action` blue, never red. "Bound" means bound in the current
+scrolling mode (`BindingAction.For(mode)`, `RelativeBinding.For(mode)`), so switching mode can change what is dim.
+
+**Hold.** A button stays lit while it is down and for 300 ms after its last edge, so no control can blink faster
+than about three times a second (WCAG 2.3.1) and fast repeats read as one steady light. The wheel and the jog, which
+have no release, stay lit for 400 ms after their last notch. Lit and unlit are instant changes; nothing fades.
+
+**Mouse wheel** (`controller-mouse.svg`). The mouse from above, cable end up, on the left; the wheel, enlarged, on
+the right, joined by a dashed `line-strong` callout.
+- Wheel (`Wheel`): the enlarged wheel is a 40 × 120 rounded rect with ten treads, 12 apart, clipped to it. Each notch
+  moves the treads 3 px (a quarter of their spacing): up for a notch away from you, down for a notch towards you. A
+  poll moves them by its notches mod 4 in one jump. The up chevron lights for 400 ms after a notch away from you,
+  the down chevron after a notch towards you; the small wheel on the mouse lights its edge with them.
+- Middle click (`Middle`): the small wheel's fill lights. Side buttons (`XButton2` above `XButton1`) light like any
+  button; unbound by default, so they show the neutral flash.
+- The mouse's left and right buttons are yours, not the prompt's: inert, never lit.
+- Your mouse and a second mouse use the same drawing. With your mouse, only what reaches the preview counts.
+
+**Xbox controller** (`controller-xbox.svg`).
+- Sticks (`LeftThumb…`, `RightThumb…`): a ring r 18; a dashed deadzone ring r = max(3, 18 × deadzone) from the stick's
+  binding (else XInput's own: 0.24 left, 0.265 right); a dot r 5 at (centre + 13 × (x, −y)), clamped to the unit
+  circle. The dot moves even when the stick is unbound (`line-strong`). A stick press lights the ring's stroke
+  (`text`, 2.5).
+- Triggers (`LeftTrigger`, `RightTrigger`): vertical meters 12 × 60, filled from the bottom by the pull (0 to 1);
+  a tick across each at 1 − deadzone (0.12 by default).
+- D-pad: four arms, each its own control. A, B, X, Y, the bumpers (LB, RB), View and Menu: each lights on press.
+- Battery, in the device line: a 20 × 10 outline (`text-muted` 1) with a 2 × 4 nub and three 4 × 5 segments (`text`):
+  Full 3, Medium 2, Low 1 in `attention`, Empty 0 with the outline in `attention`; then the word in `caption`:
+  "Battery full", "Battery medium", "Battery low", "Battery empty". Wired: no glyph, the word "Wired". Unknown:
+  nothing.
+
+**Contour ShuttleXpress (5 buttons) and ShuttlePRO v2 (15 buttons)** (`controller-shuttlexpress.svg`,
+`controller-shuttlepro.svg`). The PRO's button layout is schematic and follows the provider's numbering (left to
+right, top to bottom); check it against the unit before building (open question 6).
+- Shuttle ring (`Ring`): an annulus with 15 position ticks at 15° steps, −105° to +105° from the top. Position k =
+  round(value × 7). A filled arc band runs from the top to 15k°; the tick at k is drawn as "position now". At k = 0
+  there is no band and the top tick is `text-muted`.
+- Jog wheel (`Jog`): a circle with a dimple at 36° × (detent count mod 10), stepping per poll; its edge lights for
+  400 ms after a detent.
+- Buttons light on press; the ShuttleXpress's five sit on an arc above the ring, rotated to it.
+
+**Info column.**
+- **Device line** (`label`, `text`): the controller's name from the glossary, then its detail: "Mouse wheel · your
+  mouse", "Mouse wheel · second mouse", "Xbox controller · player 1", "Jog-shuttle". On the right, the Xbox battery.
+- **Detail line** (`caption`, `text-muted`; large body only): "Over the preview only" (your mouse); the second mouse's
+  name; "Contour ShuttleXpress" or "Contour ShuttlePRO v2"; nothing for the Xbox.
+- **Rows**, 22 tall: `[control 88: label, text-muted] [action: label] [value 64: mono, right-aligned]` (small body:
+  control 60, value 44). First, one persistent row for each bound analogue or relative control, in a fixed order
+  (triggers, then sticks; ring, then jog; the wheel). Then transient rows for lit buttons, in the controller's own
+  order: up to 2 in the large body, 1 in the small; any more show only in the drawing. A lit row: action
+  `text-strong`, value `text`. A resting persistent row: all `text-muted`. Rows never reorder by time.
+- **Last input** (`caption`, `text-muted`): the most recent input, bound or not: "Last: A · Play / pause", "Last: Y ·
+  Not used", "Last: Wheel ▲ 3 · Speed − 1.5".
+- Only inputs the router accepts for the chosen controller show: never the keyboard, never another controller kind,
+  and for your mouse only what reached the preview.
+
+Short names, for the drawing only (Settings › Controller keeps the long ones from `Labels`):
+
+| Controls | Short name |
+|---|---|
+| `Wheel`, `Middle`, `XButton1`, `XButton2` | Wheel, Middle, Side 1, Side 2 |
+| Xbox | LT, RT, LB, RB, A, B, X, Y, D-pad ↑, D-pad ↓, D-pad ←, D-pad →, View, Menu, LS, RS, LS press, RS press |
+| Contour | Ring, Jog, Button 1 … Button 15 |
+
+| Command or role | Action label | Command or role | Action label |
+|---|---|---|---|
+| PlayPause | Play / pause | SectionNext / Previous | Next section / Previous section |
+| Play / Pause | Play / Pause | JumpToStart / End | Jump to start / Jump to end |
+| SpeedUp / Down | Speed + / Speed − | ToggleScrollMode | Switch mode |
+| SpeedUpFine / DownFine | Speed + fine / Speed − fine | SetDisplay / SetLineScrolling | Display scrolling / Line scrolling |
+| SpeedReset | Start speed | ToggleBlank | Blank output |
+| LineNext / Previous | Next line / Previous line | ToggleOutput | Output on / off |
+| ParagraphNext / Previous | Next para / Previous para | None, or no binding | Not used |
+| Axis Speed / Forward / Reverse | Speed / Speed forward / Speed reverse | Relative Speed / Lines / Pixels | Speed + 0.5 (signed amount) / Next line, Previous line / Scroll |
+
+A resting persistent row shows its role without a direction: "Speed", "Speed forward", "Lines", "Scroll".
+
+| Control | Value |
+|---|---|
+| Trigger | the pull, "0 %" to "100 %" |
+| Stick axis (when bound) | signed, "+62 %" |
+| Shuttle ring | the position, "−7" to "+7" |
+| Wheel | notches in the current burst, "▲ 3" (away from you) or "▼ 2", one decimal for high-resolution wheels; the burst ends after 2 s without a notch, and the value returns to "0" |
+| Jog | detents in the current burst, "+4" (clockwise) or "−2"; same 2 s rule |
+
+**States.**
+
+| State | Drawing | Info column | Last-input line in the bar |
+|---|---|---|---|
+| No controller chosen (keyboard only) | none | centred: "No controller chosen." (`body`), "The keyboard drives the prompt." (`caption`), link button "Choose a controller" (opens Settings › Controller) | "No controller" |
+| Chosen, never seen (`NotFound`) | Missing | the controller chip exactly as in D1 (`attention` "▲ Xbox · MISSING"; `fault` while LIVE), then "No Xbox controller found. Connect it, then wait a moment." and "The keyboard still works: Space plays and pauses." in `caption` | "Xbox missing" |
+| Lost (`Disconnected`) | Missing | the same chip, then "The Xbox controller stopped answering. Reconnect it." and the keyboard sentence; the last-input line stays | "Xbox missing" |
+| Connected, no input yet | at rest | device line; in place of the rows "No input yet." (`label`, `text-muted`) and a hint in `caption`: "Turn the wheel over the preview." / "Turn the wheel." / "Press a button or move a stick." / "Turn the ring or the jog wheel." | "No input yet" |
+| Connected, in use | live | device line, rows, last input | "Last: A · Play / pause" |
+| Battery low or empty | live | the battery in `attention` (D1 shows BATTERY LOW) | as in use |
+
+Your mouse has no connection to lose: it is always connected, as its chip is always READY.
+
+**Updates: state changes only.** ARCHITECTURE §3 rule 10 forbids per-frame UI-thread work in the control window
+while the output is live, so:
+- The input thread only records. The `InputObserved` handler writes into a small per-control table (button down or
+  up and the time of its last edge; an axis's latest value; a relative control's amount added to an accumulator) and
+  keeps the last event. It never touches WPF. A burst of 200 wheel notches a second is 200 table writes, not 200 UI
+  updates.
+- The UI reads the table on the existing 10 Hz status poll (the `DispatcherTimer` in `MainWindow`) and sets only the
+  properties whose value changed. Values are rounded first, so noise changes nothing: stick dots to 1 DIP of the
+  design box, trigger fills to 1/60, the ring to its 15 positions, the wheel and jog to whole steps per poll.
+- No `CompositionTarget.Rendering`, no storyboards, no animations of any kind (no opacity fades either), no timer of
+  its own. Every change is an instant step at poll time: at most 10 visual updates a second.
+- While the drawing isn't on screen (panel hidden, the other tab open, the flyout closed or hidden while typing), the
+  poll skips it and updates only the bar's last-input line.
+
+### Margin editor with link toggle (Output layout tab, and Settings › Output)
 
 ```
                  Top [ 64 ] px
@@ -764,8 +1024,8 @@ At the end it reads `0m:00s` and "At end".
 - **Link toggle:** a 32 × 32 toolbar-style toggle with the chain icon and a word under it. Off: transparent,
   "Link". On: `toolbar-button-on`, "Linked". Turning it on sets all four to the value of the box you last changed
   (Left if none). While linked, changing any box changes all four.
-- Above the diagram: **Lines visible** `[−] 8 [+]` (4 to 16) and **Line spacing** (1.0 to 2.0, step 0.05), so all
-  output layout sits in one place.
+- With the diagram: **Lines visible** `[−] 8 [+]` (4 to 16) and **Line spacing** (1.0 to 2.0, step 0.05), so all
+  output layout sits in one place (beside the diagram in the Output layout tab, above it in Settings).
 
 ### Editor toolbar (E)
 
@@ -902,6 +1162,8 @@ paused while typing.
 | F8 | Blank output on / off |
 | F11 | Show / hide the output window |
 | Esc | In the script: leave the script (keys go to the transport). In transport: pause (never blanks, never closes) |
+| F9 | Show / hide the live panel (Controller, Output layout) |
+| Ctrl+F9 | Open the live panel's other tab |
 | Ctrl+, | Settings |
 | Ctrl+/ | Shortcut list |
 | Ctrl+N, Ctrl+O, Ctrl+S, Ctrl+Shift+S | New, open, save, save as |
@@ -949,7 +1211,11 @@ not exist: pausing is always enough.
 |---|---|---|---|---|---|---|
 | Mouse wheel (over the preview) | Display: one notch ±0.5 | middle click | Line: one notch = one line | | | |
 | Xbox controller | right trigger forward, left trigger reverse (analogue) | A | D-pad up / down | LB / RB | D-pad left / right | View button |
-| Jog-shuttle | shuttle ring (±7 positions) | centre button | jog wheel, one click = one line | buttons 1 / 2 | buttons 3 / 4 | button 5 |
+| Jog-shuttle | shuttle ring (±7 positions) | button 3 (the centre one) | jog wheel, one click = one line | buttons 2 / 4 | buttons 1 / 5 | button 6 (ShuttlePRO) |
+
+Also bound on the ShuttlePRO v2: button 7 Jump to start, button 8 Switch mode. Not bound by default: the mouse's side
+buttons; Xbox B, X, Y, Menu, both sticks and stick presses; ShuttlePRO buttons 9 to 15. (This row was corrected on
+19 Oct 2026 to match `DefaultBindings`, which is the source of truth.)
 
 ## States
 
@@ -968,7 +1234,7 @@ not exist: pausing is always enough.
 
 Focus is drawn with WPF `FocusVisualStyle` replaced by a template trigger on `IsKeyboardFocused`, so mouse clicks
 never show a ring. Focus order: app bar, sections, editor toolbar, script, preview, transport (Play first), speed,
-mode, Blank, output layout.
+mode, Blank, live panel (Controller tab, Output layout tab, Hide / show, then the Output layout fields when open).
 
 ## Accessibility and the dark venue
 
@@ -985,7 +1251,9 @@ mode, Blank, output layout.
   12 px. Everything is reachable by keyboard; the live column is reachable without the mouse at all.
 - **Glare.** The control window's brightest large areas are the Play button (scrolling) and the selected mode
   segment; nothing larger than a button is lighter than `pressed`. The output uses `#F2F2F2`, not pure white.
-- **Motion safety.** Nothing flashes or blinks (WCAG 2.3.1); the only moving thing is the script.
+- **Motion safety.** Nothing flashes or blinks (WCAG 2.3.1); the only moving thing is the script. The controller
+  drawing follows your hands in steps (at most 10 a second), each control holds its light at least 300 ms (so at most
+  about three changes a second), and every lit part is far smaller than the general flash threshold's area.
 - **Windows High Contrast.** When it is on, the control window switches to `SystemColors` brushes; the output
   keeps black and the script's inks (it is content the presenter needs).
 - **Screen readers.** Every icon button has `AutomationProperties.Name` (its tooltip text without the shortcut)
@@ -1052,6 +1320,10 @@ move text; it moves on the output and in its preview only.
   refresh rate. No layout pass per frame.
 - Velocity ramps, never position easing, during continuous scrolling: the presenter's eyes track a steady speed.
 - Repeated line steps within 220 ms chain into one smooth move; they never queue up behind each other.
+- **The controller drawing is a readout, not motion.** It changes in instant steps on the 10 Hz status poll: lights
+  on and off, stick dots, trigger fills, the ring's arc, wheel treads and the jog dimple jump to their new state, never
+  tween. No storyboard, fade, `CompositionTarget.Rendering` or timer of its own (ARCHITECTURE §3 rule 10). Its
+  timings are input rules, not motion tokens: hold 300 ms (buttons), 400 ms (wheel, jog), burst end 2 s.
 
 ## Brand assets
 
@@ -1088,6 +1360,19 @@ Key pattern: `Ilu.Color.*` (Color), `Ilu.Brush.*` (SolidColorBrush), `Ilu.Font.*
 (TextBlock styles), `Ilu.Size.*` (Double), `Ilu.Radius.*` (CornerRadius), `Ilu.Pad.*` (Thickness),
 `Ilu.Motion.*` (Duration). Front-matter names map by PascalCase: `line-strong` → `Ilu.Color.LineStrong`.
 
+**Sizes to add with the live panel build.** These are not yet in the front matter, on purpose: `ThemeTokenTests`
+compares the front matter's `spacing` block with `IluTokens.xaml` both ways, so the build commit adds them to both
+together. No colour tokens are new.
+
+| Front-matter name (`spacing`) | Value | Use |
+|---|---|---|
+| `panel-tab-bar` | 32px | live panel tab bar |
+| `controller-design-width` | 320px | controller drawing design box |
+| `controller-design-height` | 160px | controller drawing design box |
+| `live-panel-body` | 168px | large body |
+| `live-panel-body-small` | 120px | small body |
+| `live-panel-flyout-width` | 600px | flyout, at most |
+
 ## Do's and Don'ts
 
 - Do: keep the output to the script, the reading-line marker and END. Report every problem in the control window.
@@ -1098,7 +1383,9 @@ Key pattern: `Ilu.Color.*` (Color), `Ilu.Brush.*` (SolidColorBrush), `Ilu.Font.*
 - Do: use DM Mono for every changing number, Poppins for every word.
 - Don't: use red for anything but a fault that needs action now; don't use Grafana's `recording` crimson.
 - Don't: let any native white control, dialog or flash appear, or set a white editor page.
-- Don't: animate the control window, blink a chip, or play a sound.
+- Don't: animate the control window, blink a chip, or play a sound. The controller drawing steps; it never tweens,
+  fades or loops, and never lights green.
+- Don't: let the live panel take a transport key (Space, arrows, Home, Page Up / Down) for its tabs.
 - Don't: auto-fit or shrink text; don't ellipsise a section name mid-word.
 - Don't: let the mouse wheel change a setting value; it scrolls, or drives the prompt over the preview.
 - Don't: move the output onto the laptop screen, ever, even when its display disappears.
@@ -1122,6 +1409,12 @@ Key pattern: `Ilu.Color.*` (Color), `Ilu.Brush.*` (SolidColorBrush), `Ilu.Font.*
 | 12 | Radii | Grafana: 2 / 3 / 6 (detail pages); SpyderX: 2 / 4 / 6 | 0 / 2 / 3 / 4 / 6 | Grafana's three plus SpyderX's 4 px for inputs and toolbar buttons, which need a step between chip and button |
 | 13 | New colour sets | none in either | Script inks, highlights, `script-paper`, `script-ink`, `reading-marker`, `end-marker`, `margin-overlay` | The script needs content colours tuned for black at distance; kept out of the chrome so they never read as states. `ink-green` shares `live`'s hex but appears only inside the script |
 | 14 | Units | Grafana px; SpyderX pt | DIP | WPF's unit; 1 DIP = 1 CSS px, so Grafana's sizes carry over unchanged |
+| 15 | Control-window motion | Both: no motion; this file: "the control window never moves" | The controller drawing changes in steps up to 10 times a second (lights, stick dots, trigger fills, ring arc, wheel treads), never tweened | It is a readout of your hands, like the speed readout. Steps on the existing 10 Hz poll keep ARCHITECTURE §3 rule 10 (no per-frame work while LIVE) |
+| 16 | Flashing | "Nothing flashes or blinks" | Controls light on press, held at least 300 ms (400 ms for the wheel and jog) | So a control changes at most about three times a second, in areas far below WCAG 2.3.1's flash threshold; fast repeats read as one steady light |
+| 17 | Illustration | Neither house file draws hardware | Flat line drawings of four controllers, from existing tokens only (`line-strong` outline, `text` when lit) | The user asked to see the controller react. Schematic, not photographic: no shading, no gradients, no product colours, no logos |
+| 18 | Tabs | No tab pattern in either; Windows tabs move with the arrows and Ctrl+Tab | Text tabs with a 2 px `text-strong` bar under the open one; Enter and the mouse only | Arrows, Home and Page Up / Down are transport keys and must never be taken by a focused tab; F9 and Ctrl+F9 reach the panel from anywhere |
+| 19 | Flyouts | Sections flyout: closes on Esc or a jump | The live panel's flyout stays open until you hide it, hides itself only while you type in the script, never takes focus | It is a monitor kept open through a show; Esc must keep meaning pause |
+| 20 | Margin editor at Compact | This file (first version): "margin editor in Settings" below Wide | The Output layout tab, in every tier (a compact form without the diagram in the small body) | The tab replaces the fixed block, so it exists wherever the panel does; Settings › Output keeps the full editor |
 
 ## Open questions for the user
 
@@ -1130,6 +1423,14 @@ Key pattern: `Ilu.Color.*` (Color), `Ilu.Brush.*` (SolidColorBrush), `Ilu.Font.*
 2. **Editing while LIVE**: allowed with the green edge and caption (proposed), or locked until paused?
 3. **Section names on the output**: off by default (proposed), or shown small and grey?
 4. **App icon**: the proposal above, or something else?
+5. **Hiding the live panel**: the space it frees stays empty (proposed), so nothing moves mid-show. The alternative
+   lets the preview grow, which only helps outputs taller than 16:9 and moves the transport down.
+6. **ShuttlePRO v2 layout**: the drawing places its 15 buttons as rows of 4 and 5, two either side of the ring and
+   two thumb buttons, numbered left to right, top to bottom. Please check against the venue's unit (or a photo), and
+   whether the venue has a ShuttleXpress, a ShuttlePRO v2, or both.
+7. **F9 for the live panel** (Ctrl+F9 for its other tab): free in the app and in the editor. Is F9 used by anything
+   else on the operator laptop (Companion, a capture tool)?
+8. **Default tab**: Controller (proposed) or Output layout on first run?
 
 ## Decisions Log
 
@@ -1142,3 +1443,6 @@ Key pattern: `Ilu.Color.*` (Color), `Ilu.Brush.*` (SolidColorBrush), `Ilu.Font.*
 | 2026-10-19 | Preview lays out at the output's size and scales | Exact line breaks and margins in the preview |
 | 2026-10-19 | Output carries no chrome; problems only in the control window | The presenter sees only the words |
 | 2026-10-19 | Two key modes (typing / transport), F5, F8, F11, Esc global | Space and arrows can drive the transport without stealing them from the editor |
+| 2026-10-19 | D7 becomes the live panel: tabs Controller (default) and Output layout, hideable (F9), body inline large / inline small / flyout by the column's height | User request: margin editor as a tab that can be hidden, and a live controller mock-up in its place. Controller is the show-time view; layout is set-up |
+| 2026-10-19 | Controller drawing: flat line drawings with ControlId-named parts, lit on press with a 300 ms hold, what-it-did rows, updated only on the 10 Hz poll | Feedback you can trust mid-show, without per-frame UI work while LIVE (ARCHITECTURE §3 rule 10); SVG drafts in `docs/design/` |
+| 2026-10-19 | Controller defaults table corrected to `DefaultBindings` (jog-shuttle buttons) | The table had drifted from the code |
