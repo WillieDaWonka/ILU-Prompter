@@ -186,6 +186,22 @@ internal sealed class FakeOutput : IOutputSurface
     public Task ShutdownAsync() => Task.CompletedTask;
 }
 
+/// <summary>A FakeOutput that also offers a frame pulse (like OutputHost), raisable from any thread.</summary>
+internal sealed class FakePulseOutput : IOutputSurface, IFramePulse
+{
+    private OutputState _state = OutputState.Initial;
+    public OutputState State { get => Volatile.Read(ref _state); set { Volatile.Write(ref _state, value); StateChanged?.Invoke(this, value); } }
+    public event EventHandler<OutputState>? StateChanged;
+    public event EventHandler? FramePulse;
+    public Task InitializeAsync() => Task.CompletedTask;
+    public Task ShowAsync() => Task.CompletedTask;
+    public Task HideAsync() => Task.CompletedTask;
+    public void SetBlank(bool blank) => State = State with { IsBlank = blank };
+    public Task ShutdownAsync() => Task.CompletedTask;
+    public void Pulse() => FramePulse?.Invoke(this, EventArgs.Empty);
+    public bool HasPulseSubscribers => FramePulse is not null;
+}
+
 internal static class Wait
 {
     public static bool For(Func<bool> condition, int timeoutMs = 3000)

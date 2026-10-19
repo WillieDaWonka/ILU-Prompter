@@ -19,6 +19,14 @@ public sealed record PreviewServices(
     ILayoutGeometryBuilder GeometryBuilder,
     IAppLog Log);
 
+/// <summary>How the preview is currently moved.</summary>
+internal enum PreviewDriveMode
+{
+    Idle = 0,
+    Frames,     // its own CompositionTarget.Rendering subscription (output not rendering)
+    Pulses,     // repainted from the output thread's frame pulse (output rendering)
+}
+
 /// <summary>
 /// The live preview (DESIGN.md D2): the output laid out at the output's logical size, scaled, letterboxed
 /// in `backdrop`, with preview-only overlays (margin tint, reading line, BLANK dimming) and margin /
@@ -34,6 +42,15 @@ public sealed class PrompterPreview : Control
     private PrompterSurface? _surface;
     private FrameClock _clock = new();
     private FrameStats? _stats;
+    private bool _outputRendering;
+    private IFramePulse? _pulse;
+    private bool _renderingSubscribed;
+    private bool _pulseSubscribed;
+    private bool _pulseStalled;
+    private long _lastPulse;
+    private int _pulsePending;
+    private DispatcherTimer? _watchdog;
+    private readonly Action _pulseAction;
     private OutputState _outputState = OutputState.Initial;
     private int _stateRefreshPending;
     private PreviewHandle _hover;
@@ -46,6 +63,7 @@ public sealed class PrompterPreview : Control
         ClipToBounds = true;
         SnapsToDevicePixels = true;
         _refreshAction = RefreshFromOutputState;
+        _pulseAction = PaintFromPulse;
         AddVisualChild(_scene);
         AddLogicalChild(_scene);
         _scene.LayoutChanged += (_, _) => PushVisualState();
@@ -73,6 +91,7 @@ public sealed class PrompterPreview : Control
         _surface.Rebuilt += OnSurfaceRebuilt;
         _scene.SetSurface(_surface);
 
+        _pulse = services.Output as IFramePulse;
         _outputState = services.Output.State;
         services.Output.StateChanged += OnOutputStateChanged;
         _surface.Start();
@@ -83,12 +102,14 @@ public sealed class PrompterPreview : Control
         _stats = services.Log.DiagnosticsEnabled
             ? new FrameStats("preview", services.Log, _outputState.Geometry.RefreshHz, TimeSpan.FromSeconds(10))
             : null;
-        CompositionTarget.Rendering += OnRendering;
+        ApplyDriveMode();
     }
 
     public void Detach()
     {
-        CompositionTarget.Rendering -= OnRendering;
+        SetRendering(false);
+        SetPulse(false);
+        StopWatchdog();
         if (_services is not null) _services.Output.StateChanged -= OnOutputStateChanged;
         if (_surface is not null)
         {
@@ -99,7 +120,10 @@ public sealed class PrompterPreview : Control
 
         _surface = null;
         _services = null;
+        _pulse = null;
         _stats = null;
+        _outputRendering = false;
+        _pulseStalled = false;
         EndDrag();
     }
 
@@ -107,6 +131,10 @@ public sealed class PrompterPreview : Control
     internal PrompterSurface? Surface => _surface;
 
     internal PreviewScene Scene => _scene;
+
+    /// <summary>Which mechanism currently moves the picture (tests and diagnostics).</summary>
+    internal PreviewDriveMode DriveMode =>
+        _renderingSubscribed ? PreviewDriveMode.Frames : _pulseSubscribed ? PreviewDriveMode.Pulses : PreviewDriveMode.Idle;
 
     protected override int VisualChildrenCount => 1;
 
@@ -125,17 +153,124 @@ public sealed class PrompterPreview : Control
         return arrangeBounds;
     }
 
-    // ------------------------------------------------------------------ per frame (UI thread)
+    // ------------------------------------------------------------------ driving the picture (UI thread)
+    //
+    // WPF has one render thread per process. Measured on the development laptop: while the output window animates on its
+    // own thread, a CompositionTarget.Rendering subscription on the UI thread (even one that paints rarely) makes both
+    // threads sync with the render thread every frame and the output drops to 30 fps. A preview painted from a pulse that
+    // the output thread sends after each frame costs the output nothing, even at 60 Hz. So:
+    //  - output rendering: no Rendering subscription here; the output's FramePulse repaints the preview (a watchdog falls
+    //    back to Rendering if pulses stop for 500 ms);
+    //  - no output rendering (closed, hidden, missing, or no pulse source): Rendering drives and ticks the engine.
+
+    private void ApplyDriveMode()
+    {
+        var pulses = _outputRendering && _pulse is not null;
+        SetPulse(pulses);                                  // stays subscribed while stalled, to notice the output coming back
+        if (pulses)
+        {
+            SetRendering(_pulseStalled);
+            StartWatchdog();
+        }
+        else
+        {
+            StopWatchdog();
+            SetRendering(_services is not null);
+        }
+    }
+
+    private void SetRendering(bool on)
+    {
+        if (on == _renderingSubscribed) return;
+        _renderingSubscribed = on;
+        if (on)
+        {
+            _clock = new FrameClock();
+            CompositionTarget.Rendering += OnRendering;
+        }
+        else
+        {
+            CompositionTarget.Rendering -= OnRendering;
+        }
+    }
+
+    private void SetPulse(bool on)
+    {
+        if (_pulse is null || on == _pulseSubscribed) return;
+        _pulseSubscribed = on;
+        if (on)
+        {
+            Volatile.Write(ref _lastPulse, Stopwatch.GetTimestamp());
+            _pulse.FramePulse += OnPulse;
+        }
+        else
+        {
+            _pulse.FramePulse -= OnPulse;
+        }
+    }
+
+    private void StartWatchdog()
+    {
+        if (_watchdog is not null) return;
+        _watchdog = new DispatcherTimer(DispatcherPriority.Background, Dispatcher) { Interval = TimeSpan.FromMilliseconds(250) };
+        _watchdog.Tick += OnWatchdog;
+        _watchdog.Start();
+    }
+
+    private void StopWatchdog()
+    {
+        if (_watchdog is null) return;
+        _watchdog.Stop();
+        _watchdog.Tick -= OnWatchdog;
+        _watchdog = null;
+    }
+
+    private void OnWatchdog(object? sender, EventArgs e)
+    {
+        var silent = (Stopwatch.GetTimestamp() - Volatile.Read(ref _lastPulse)) / (double)Stopwatch.Frequency;
+        if (silent < 0.5 || _pulseStalled) return;
+        _pulseStalled = true;
+        _services?.Log.Warn("preview", "No frame pulse from the output for 500 ms; the preview is driving itself until it resumes.");
+        ApplyDriveMode();
+    }
+
+    /// <summary>Raised on the output thread, after a frame in which the position changed.</summary>
+    private void OnPulse(object? sender, EventArgs e)
+    {
+        Volatile.Write(ref _lastPulse, Stopwatch.GetTimestamp());
+        if (Interlocked.Exchange(ref _pulsePending, 1) == 1) return;
+        Dispatcher.BeginInvoke(DispatcherPriority.Render, _pulseAction);
+    }
+
+    private void PaintFromPulse()
+    {
+        Interlocked.Exchange(ref _pulsePending, 0);
+        var services = _services;
+        var surface = _surface;
+        if (services is null || surface is null) return;
+        if (_pulseStalled)
+        {
+            _pulseStalled = false;
+            ApplyDriveMode();
+        }
+
+        surface.SetPosition(services.Engine.ReadPosition());
+        _stats?.Record(Stopwatch.GetTimestamp());
+    }
 
     private void OnRendering(object? sender, EventArgs e)
     {
         var services = _services;
         var surface = _surface;
         if (services is null || surface is null) return;
-        if (!_clock.TryMap(((RenderingEventArgs)e).RenderingTime, Stopwatch.GetTimestamp(), out var frame)) return;
+        var now = Stopwatch.GetTimestamp();
+        if (!_clock.TryMap(((RenderingEventArgs)e).RenderingTime, now, out var frame)) return;
 
-        // The output ticks the engine every frame while it renders; this only ticks when it has not for 50 ms.
-        services.Engine.TickIfStale(Stopwatch.GetTimestamp());
+        // With no output ticking, the preview is the only ticker and must tick every frame to stay smooth. If the output
+        // is meant to be rendering (watchdog fallback) it only steps in when the output has stalled for 50 ms.
+        if (_outputRendering) services.Engine.TickIfStale(now, 0.05);
+        else services.Engine.TickIfStale(frame, 0.001);
+
         surface.SetPosition(services.Engine.ReadPosition());
         _stats?.Record(frame);
     }
@@ -161,7 +296,9 @@ public sealed class PrompterPreview : Control
 
     private void ApplyOutputState()
     {
+        _outputRendering = _outputState.IsOpen && _outputState.Display == OutputDisplayStatus.Ready;
         if (_surface is not null) _surface.Opacity = _outputState.IsBlank ? BlankDim : 1.0;
+        ApplyDriveMode();
         PushVisualState();
     }
 

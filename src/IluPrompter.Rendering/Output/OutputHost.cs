@@ -24,8 +24,9 @@ internal sealed record OutputHostOptions(bool DevOutputOnPrimary = false, bool H
 /// output display, never on the primary one (except with the dev flag), and it stays hidden, not moved, when that
 /// display disappears.
 /// </summary>
-public sealed class OutputHost : IOutputSurface
+public sealed class OutputHost : IOutputSurface, IFramePulse
 {
+    private static readonly long HeartbeatTicks = Stopwatch.Frequency / 4;
     private const double DevWidthDip = 960;
     private const double DevHeightDip = 540;
 
@@ -54,6 +55,10 @@ public sealed class OutputHost : IOutputSurface
     private string? _chosenId;
     private bool _visible;
     private bool _rendering;
+    private double _lastPulsePosition = double.NaN;
+    private long _lastPulseTimestamp;
+    private readonly object _pulseGate = new();
+    private EventHandler? _framePulse;
 
     public OutputHost(
         IScrollEngine engine,
@@ -91,6 +96,13 @@ public sealed class OutputHost : IOutputSurface
     public OutputState State => Volatile.Read(ref _state);
 
     public event EventHandler<OutputState>? StateChanged;
+
+    /// <summary>Raised on the output thread after a frame in which the position changed, and every 250 ms while rendering.</summary>
+    event EventHandler? IFramePulse.FramePulse
+    {
+        add { lock (_pulseGate) { _framePulse += value; } }
+        remove { lock (_pulseGate) { _framePulse -= value; } }
+    }
 
     /// <summary>The surface on the output thread (tests only; touch it from that thread).</summary>
     internal PrompterSurface? Surface => _surface;
@@ -273,7 +285,10 @@ public sealed class OutputHost : IOutputSurface
             else if (monitor is not null)
             {
                 var bounds = monitor.BoundsPx;
+                // Place while hidden. Moving to a display with another DPI makes WPF apply Windows' suggested rectangle,
+                // so look and place again before the window becomes visible (it never shows at the wrong place).
                 _window.PlaceOn(bounds);
+                if (_window.GetActualBounds() != bounds) _window.PlaceOn(bounds);
                 if (!_window.IsVisible) _window.Show();
                 var actual = _window.GetActualBounds();
                 if (actual != bounds)
@@ -435,8 +450,15 @@ public sealed class OutputHost : IOutputSurface
         // Allocation-free: a cast, a clock lookup, three lock-free reads and one transform update.
         if (!_clock.TryMap(((RenderingEventArgs)e).RenderingTime, Stopwatch.GetTimestamp(), out var timestamp)) return;
         _engine.Tick(timestamp);
-        _surface!.SetPosition(_engine.ReadPosition());
+        var position = _engine.ReadPosition();
+        _surface!.SetPosition(position);
         _stats?.Record(timestamp);
+        if (position != _lastPulsePosition || timestamp - _lastPulseTimestamp > HeartbeatTicks)
+        {
+            _lastPulsePosition = position;
+            _lastPulseTimestamp = timestamp;
+            _framePulse?.Invoke(this, EventArgs.Empty);
+        }
         _guard!.Update(_engine.Status.Transport == TransportState.Playing);
     }
 

@@ -24,6 +24,14 @@ internal sealed record SurfaceServices(
     IAppLog Log,
     Func<OutputGeometry> GetOutputGeometry);
 
+/// <summary>Raised on the output thread after each frame in which the scroll position changed (and as a heartbeat at least
+/// four times a second while rendering). Lets the preview follow the output without its own per-frame Rendering
+/// subscription (see PrompterPreview).</summary>
+internal interface IFramePulse
+{
+    event EventHandler? FramePulse;
+}
+
 /// <summary>Seam for a future Direct2D/DirectWrite output (RESEARCH §1.3). Only the WPF renderer exists in v1.</summary>
 internal interface IOutputRenderer
 {

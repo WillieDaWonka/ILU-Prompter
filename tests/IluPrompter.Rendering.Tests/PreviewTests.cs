@@ -249,6 +249,108 @@ public class PreviewTests
         Assert.True(rig.Preview.Surface!.RebuildCount >= 1);
     }
 
+    private static OutputState Live(OutputState s) => s with { IsOpen = true, Display = OutputDisplayStatus.Ready };
+
+    [WpfFact]
+    public async Task WithoutAPulseSource_ThePreviewAlwaysDrivesItselfFromRendering()
+    {
+        var rig = new Rig();                                        // FakeOutput has no frame pulse
+        Assert.Equal(PreviewDriveMode.Frames, rig.Preview.DriveMode);
+        rig.Output.State = Live(rig.Output.State);
+        await Pump();
+        Assert.Equal(PreviewDriveMode.Frames, rig.Preview.DriveMode);
+    }
+
+    [WpfFact]
+    public async Task WhileTheOutputRenders_ThePreviewDropsItsRenderingSubscription_AndFollowsPulses()
+    {
+        var output = new FakePulseOutput();
+        var engine = new FakeEngine();
+        var preview = new PrompterPreview();
+        preview.Attach(new PreviewServices(engine, new PromptDocumentService(), new FakeSettings(), output, new FakeDocumentFactory(), new FakeGeometryBuilder(), new RecordingLog()));
+        preview.Measure(new Size(696, 392));
+        preview.Arrange(new Rect(0, 0, 696, 392));
+
+        Assert.Equal(PreviewDriveMode.Frames, preview.DriveMode);   // output closed: the preview is the only ticker
+        Assert.False(output.HasPulseSubscribers);
+
+        output.State = Live(output.State);
+        await Pump();
+        Assert.Equal(PreviewDriveMode.Pulses, preview.DriveMode);
+        Assert.True(output.HasPulseSubscribers);
+
+        // A pulse from the output thread repaints the preview at the engine's position, without the preview ticking.
+        var translate = (TranslateTransform)preview.Surface!.Host.RenderTransform;
+        engine.SetPosition(321);
+        var ticksBefore = engine.Ticks + engine.StaleTicks;
+        await Task.Run(output.Pulse);
+        await Pump();
+        Assert.Equal(-321, translate.Y, 6);
+        Assert.Equal(ticksBefore, engine.Ticks + engine.StaleTicks);
+
+        // Many pulses before the UI thread gets to run coalesce into one repaint at the newest position.
+        engine.SetPosition(400);
+        engine.SetPosition(410);
+        await Task.Run(() => { for (var i = 0; i < 50; i++) output.Pulse(); });
+        await Pump();
+        Assert.Equal(-410, translate.Y, 6);
+
+        output.State = output.State with { IsOpen = false };
+        await Pump();
+        Assert.Equal(PreviewDriveMode.Frames, preview.DriveMode);
+        Assert.False(output.HasPulseSubscribers);
+
+        output.State = Live(output.State);
+        await Pump();
+        Assert.Equal(PreviewDriveMode.Pulses, preview.DriveMode);
+        preview.Detach();
+        Assert.Equal(PreviewDriveMode.Idle, preview.DriveMode);
+        Assert.False(output.HasPulseSubscribers);
+    }
+
+    [WpfFact]
+    public async Task OutputMissingOrHidden_PutsThePreviewBackInChargeOfTicking()
+    {
+        var output = new FakePulseOutput();
+        var preview = new PrompterPreview();
+        preview.Attach(new PreviewServices(new FakeEngine(), new PromptDocumentService(), new FakeSettings(), output, new FakeDocumentFactory(), new FakeGeometryBuilder(), new RecordingLog()));
+        output.State = Live(output.State);
+        await Pump();
+        Assert.Equal(PreviewDriveMode.Pulses, preview.DriveMode);
+
+        output.State = output.State with { Display = OutputDisplayStatus.Missing, Monitor = null };   // still "open", window hidden
+        await Pump();
+        Assert.Equal(PreviewDriveMode.Frames, preview.DriveMode);
+        preview.Detach();
+    }
+
+    [WpfFact]
+    public async Task IfPulsesStop_AWatchdogFallsBackToRendering_AndPulsesResumeControl()
+    {
+        var output = new FakePulseOutput();
+        var log = new RecordingLog();
+        var preview = new PrompterPreview();
+        preview.Attach(new PreviewServices(new FakeEngine(), new PromptDocumentService(), new FakeSettings(), output, new FakeDocumentFactory(), new FakeGeometryBuilder(), log));
+        output.State = Live(output.State);
+        await Pump();
+        Assert.Equal(PreviewDriveMode.Pulses, preview.DriveMode);
+
+        var until = DateTime.UtcNow.AddSeconds(3);
+        while (preview.DriveMode == PreviewDriveMode.Pulses && DateTime.UtcNow < until)
+        {
+            await Task.Delay(50);
+            await Pump();
+        }
+
+        Assert.Equal(PreviewDriveMode.Frames, preview.DriveMode);
+        Assert.Contains(log.Lines, l => l.Contains("No frame pulse"));
+
+        await Task.Run(output.Pulse);
+        await Pump();
+        Assert.Equal(PreviewDriveMode.Pulses, preview.DriveMode);
+        preview.Detach();
+    }
+
     [WpfFact]
     public void RenderedPreview_ShowsBackdropBars_ScaledBlackOutput_MarginTint_AndText()
     {
