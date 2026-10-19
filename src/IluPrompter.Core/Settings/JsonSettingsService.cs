@@ -394,6 +394,7 @@ public sealed class JsonSettingsService : ISettingsService, IDisposable
     {
         Width = Positive(w.Width, 1280),
         Height = Positive(w.Height, 800),
+        LivePanelTab = Enum.IsDefined(w.LivePanelTab) ? w.LivePanelTab : LivePanelTab.Controller,
     };
 
     private static double Range(double value, double min, double max, double fallback) =>
