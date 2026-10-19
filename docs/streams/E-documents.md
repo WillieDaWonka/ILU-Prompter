@@ -104,6 +104,14 @@ Tests: 151 in `tests/IluPrompter.Documents.Tests`, all `[WpfFact]`/`[WpfTheory]`
   unconstrained height (the contract precondition): a fixed-height host only has visuals for the visible lines, and the
   builder then falls back to the walk.
 
+## Integration change: text lines only
+
+A paragraph with nothing to read (only white space; WPF draws an empty line as two U+200B, which count as nothing) is
+layout space: `ParagraphTops` has its top (so a hidden section marker's top is still the section top) but the line
+table has no line for it. Start position, line/paragraph steps, section jumps and Line scrolling therefore always land
+text on the reading line. Found by running the 20-page sample: the start put the hidden "## Welcome" half-line on the
+reading line with the first words 1.5 lines below it, and every other "next line" landed on a blank line.
+
 ## Gaps and notes
 
 - Numbered DOCX lists get a bullet like bulleted ones (the contract says "bullet prefix").

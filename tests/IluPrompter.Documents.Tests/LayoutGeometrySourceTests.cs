@@ -117,7 +117,7 @@ public class LayoutGeometrySourceTests
         var file = new ScriptFileService().Load(Path.Combine(T.RepoRoot(), "samples", "sample-20-pages.txt"));
         var editor = T.Load(file.DocumentXaml);
         var (walk, fast, used) = BuildBoth(editor, Style(91.53846153846153), 1792);
-        Assert.True(walk.LineCount > 1000, $"{walk.LineCount} lines");
+        Assert.True(walk.LineCount > 800, $"{walk.LineCount} lines"); // text lines only: blank lines and hidden markers are space
         AssertSame(walk, fast);
         Assert.Equal(Source.VisualTree, used);
     }

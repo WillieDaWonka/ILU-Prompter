@@ -9,7 +9,9 @@ namespace IluPrompter.Documents;
 /// Builds the line, paragraph and section tables from a laid-out output document (ARCHITECTURE §2.5 / §4.E).
 /// Owner thread only; stateless.
 /// <para>
-/// <b>Tops are line-box tops</b>, not glyph boxes. Two ways to read them, both O(lines):
+/// <b>Tops are line-box tops</b>, not glyph boxes, and <b>lines are text lines</b>: a blank paragraph (only white space,
+/// e.g. an empty line or a section marker whose name is hidden) gets its paragraph top but no line (ARCHITECTURE §2.1).
+/// Two ways to read the lines, both O(lines):
 /// </para>
 /// <list type="number">
 /// <item><b>Visual tree (fast path, about 10x faster).</b> After layout WPF has one line visual per laid-out line, grouped
@@ -136,7 +138,43 @@ public sealed class LayoutGeometryBuilder : ILayoutGeometryBuilder
             Offsets.Add(offset);
             if (double.IsNaN(ParagraphTops[paragraph])) ParagraphTops[paragraph] = top;
         }
+
+        /// <summary>Drops the lines from <paramref name="index"/> on (and the paragraph tops they set).</summary>
+        public void RemoveFrom(int index)
+        {
+            if (index >= Tops.Count) return;
+            for (var i = index; i < Tops.Count; i++) ParagraphTops[Paragraphs[i]] = double.NaN;
+            var count = Tops.Count - index;
+            Tops.RemoveRange(index, count);
+            Heights.RemoveRange(index, count);
+            Paragraphs.RemoveRange(index, count);
+            Offsets.RemoveRange(index, count);
+        }
+
+        /// <summary>A blank paragraph: it has a top (sections, paragraph lookups) but no reading line.</summary>
+        public void SetParagraphTop(int paragraph, double top)
+        {
+            if (double.IsNaN(ParagraphTops[paragraph])) ParagraphTops[paragraph] = top;
+        }
     }
+
+    /// <summary>True when the paragraph has nothing to read: no text but white space. Empty lines, and section markers
+    /// whose names are hidden (the factory empties them), are layout space, not lines: they get a paragraph top but no
+    /// line, so the start position, line steps and section jumps always put text on the reading line.</summary>
+    private static bool IsBlank(string text)
+    {
+        foreach (var c in text)
+        {
+            if (IsInk(c)) return false;
+        }
+
+        return true;
+    }
+
+    /// <summary>A character that puts something on the screen. Not white space, and not a format or control character
+    /// (WPF draws an empty line as two zero-width spaces, U+200B, which is a format character).</summary>
+    private static bool IsInk(char c) =>
+        !char.IsWhiteSpace(c) && char.GetUnicodeCategory(c) is not (System.Globalization.UnicodeCategory.Format or System.Globalization.UnicodeCategory.Control);
 
     // ---- fast path: the laid-out line visuals ----------------------------------------------------------------
 
@@ -175,21 +213,31 @@ public sealed class LayoutGeometryBuilder : ILayoutGeometryBuilder
             var group = groups[p];
             string? text = null;
             var cursor = 0;
+            var firstLine = lines.Tops.Count;
+            var hasInk = false;
+            var unknownOffset = false;
             for (var j = 0; j < group.Count; j++)
             {
                 var top = group[j].TransformToAncestor(frame).Transform(default).Y;
                 if (!double.IsFinite(top) || top <= previousTop) return false;
                 previousTop = top;
 
-                var (first, drawn) = ReadGlyphs(group[j]);
+                var (first, drawn, ink) = ReadGlyphs(group[j]);
+                hasInk |= ink;
                 int offset;
                 if (j == 0)
                 {
                     offset = 0;
                 }
+                else if (first is null || first.Length == 0)
+                {
+                    // A line with nothing drawn (e.g. between two line breaks): its start is unknown. Fine if the whole
+                    // paragraph turns out blank (its lines are dropped); otherwise the walk must do it.
+                    unknownOffset = true;
+                    offset = cursor;
+                }
                 else
                 {
-                    if (first is null || first.Length == 0) return false;
                     text ??= DocumentNavigator.TextBetween(paragraph.ContentStart, paragraph.ContentEnd);
                     if (cursor > text.Length) return false;
                     offset = text.IndexOf(first, cursor, StringComparison.Ordinal);
@@ -201,6 +249,13 @@ public sealed class LayoutGeometryBuilder : ILayoutGeometryBuilder
             }
 
             if (text is not null && cursor > text.Length) return false;
+            if (hasInk && unknownOffset) return false;
+            if (!hasInk && group.Count > 0)
+            {
+                // Blank paragraph (see IsBlank): keep its top, drop its lines.
+                lines.RemoveFrom(firstLine);
+                lines.SetParagraphTop(p, group[0].TransformToAncestor(frame).Transform(default).Y);
+            }
         }
 
         // The frame must be the GetCharacterRect frame: check the first and the last paragraph against the rectangle.
@@ -253,15 +308,17 @@ public sealed class LayoutGeometryBuilder : ILayoutGeometryBuilder
         }
     }
 
-    /// <summary>The characters of the line's first glyph run and the number of characters drawn on the line.</summary>
-    private static (string? First, int Drawn) ReadGlyphs(Visual line)
+    /// <summary>The characters of the line's first glyph run, the number of characters drawn on the line, and whether any
+    /// of them is not white space.</summary>
+    private static (string? First, int Drawn, bool Ink) ReadGlyphs(Visual line)
     {
         string? first = null;
         var drawn = 0;
-        Visit(VisualTreeHelper.GetDrawing(line), ref first, ref drawn);
-        return (first, drawn);
+        var ink = false;
+        Visit(VisualTreeHelper.GetDrawing(line), ref first, ref drawn, ref ink);
+        return (first, drawn, ink);
 
-        static void Visit(Drawing? drawing, ref string? first, ref int drawn)
+        static void Visit(Drawing? drawing, ref string? first, ref int drawn, ref bool ink)
         {
             switch (drawing)
             {
@@ -273,10 +330,20 @@ public sealed class LayoutGeometryBuilder : ILayoutGeometryBuilder
                         first = new string(buffer);
                     }
 
+                    if (!ink)
+                    {
+                        foreach (var c in characters)
+                        {
+                            if (!IsInk(c)) continue;
+                            ink = true;
+                            break;
+                        }
+                    }
+
                     drawn += characters.Count;
                     break;
                 case DrawingGroup group:
-                    foreach (var child in group.Children) Visit(child, ref first, ref drawn);
+                    foreach (var child in group.Children) Visit(child, ref first, ref drawn, ref ink);
                     break;
             }
         }
@@ -304,6 +371,7 @@ public sealed class LayoutGeometryBuilder : ILayoutGeometryBuilder
         var lineInParagraph = 0;
         var firstTop = 0.0;
         var fixedPitch = false;
+        var blank = false;
         var guard = 0;
         while (position is not null && (endStart is null || position.CompareTo(endStart) < 0))
         {
@@ -317,6 +385,7 @@ public sealed class LayoutGeometryBuilder : ILayoutGeometryBuilder
                     offset = DocumentNavigator.TextBetween(paragraph.ContentStart, position).Length;
                     lineInParagraph = 0;
                     fixedPitch = HasFixedLineHeight(paragraph);
+                    blank = IsBlank(DocumentNavigator.TextBetween(paragraph.ContentStart, paragraph.ContentEnd));
                 }
                 else
                 {
@@ -347,7 +416,8 @@ public sealed class LayoutGeometryBuilder : ILayoutGeometryBuilder
                     if (startsParagraph) firstTop = top;
                 }
 
-                lines.Add(top, height, paragraphIndex, offset);
+                if (blank) lines.SetParagraphTop(paragraphIndex, top);
+                else lines.Add(top, height, paragraphIndex, offset);
             }
 
             position = Advance(position, ref guard);

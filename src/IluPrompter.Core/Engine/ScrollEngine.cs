@@ -663,42 +663,52 @@ public sealed class ScrollEngine : IScrollEngine
             return;
         }
 
+        // Paragraphs are counted by their lines: a paragraph with no line (an empty line, or a section marker whose name is
+        // hidden) is space, not a stop, so it is stepped over in both directions (integration fix: .txt scripts have an
+        // empty paragraph between every two paragraphs).
         var y = _pos + _readingY;
         var k = geo.FindLineAt(y);
-        var p = Math.Clamp(geo.LineParagraphs[k], 0, geo.ParagraphCount - 1);
-        var q = p;
+        var p = geo.LineParagraphs[k];
+        var target = FirstLineOfParagraph(p);
         if (n > 0)
         {
-            if (p >= geo.ParagraphCount - 1)
+            var moved = false;
+            for (var j = 0; j < n; j++)
+            {
+                var next = FirstLineOfParagraph(p + 1);   // first line of the next paragraph that has lines
+                if (next < 0 || geo.LineParagraphs[next] <= p)
+                {
+                    break; // already in the last paragraph
+                }
+
+                target = next;
+                p = geo.LineParagraphs[next];
+                moved = true;
+            }
+
+            if (!moved)
             {
                 return;
             }
-
-            q = (int)Math.Min((long)p + n, geo.ParagraphCount - 1);
         }
         else
         {
             for (var j = 0; j < -(long)n; j++)
             {
-                if (j == 0)
+                if (j == 0 && target >= 0 && (y - geo.LineCentre(target)) > 0.5 * geo.LineHeights[target])
                 {
-                    var first = FirstLineOfParagraph(q);
-                    if (first >= 0 && (y - geo.LineCentre(first)) > 0.5 * geo.LineHeights[first])
-                    {
-                        continue; // below the paragraph's first line by more than half a line: go to its start
-                    }
+                    continue; // below the paragraph's first line by more than half a line: go to its start
                 }
 
-                if (q == 0)
+                if (target <= 0)
                 {
                     break;
                 }
 
-                q--;
+                target = FirstLineOfParagraph(geo.LineParagraphs[target - 1]); // the previous paragraph that has lines
             }
         }
 
-        var target = FirstLineOfParagraph(q);
         if (target < 0)
         {
             return;
@@ -1109,12 +1119,27 @@ public sealed class ScrollEngine : IScrollEngine
             stepInterval = 60.0 / Math.Abs(effectiveLpm);
         }
 
+        // Time left at the set speed. Display scrolling covers distance at lpm x BaseLineHeight, so it counts the space
+        // from the current line to END (paragraph gaps, empty lines and hidden section markers included) in base lines;
+        // Line scrolling makes one step per text line. Measured from the current line's centre, so the value (and the
+        // status) changes only when the line does. (Integration fix: counting text lines alone under-read a real script
+        // by a quarter or more.)
         var remainingLines = lineCount == 0 ? 0 : lineCount - 1 - lineIndex;
-        var seconds = TimeEstimator.SecondsForLines(remainingLines, _setSpeed, curve);
+        var setLpm = Math.Abs(SpeedCurve.ToLinesPerMinute(_setSpeed, curve, maxSpeed));
+        var remainingUnits = _transport == TransportState.AtEnd ? 0.0
+            : _mode == ScrollMode.Display && geo.BaseLineHeight > 0 && lineIndex >= 0
+                ? Math.Max(0.0, _pMax + _readingY - geo.LineCentre(lineIndex)) / geo.BaseLineHeight
+                : remainingLines;
+        var seconds = lineCount == 0 || remainingUnits <= 1e-9 ? 0.0
+            : setLpm < 1e-6 ? double.PositiveInfinity
+            : remainingUnits * 60.0 / setLpm;
 
         var effRounded = Round1(effectiveSpeed);
         var lpmRounded = Round1(effectiveLpm);
-        var wpmRounded = Round1(TimeEstimator.WordsPerMinute(geo, effectiveLpm));
+        var wpm = _mode == ScrollMode.Display || lineCount == 0
+            ? TimeEstimator.WordsPerMinute(geo, effectiveLpm)
+            : Math.Abs(effectiveLpm) * geo.WordCount / lineCount; // Line scrolling: one text line per step
+        var wpmRounded = Round1(double.IsFinite(wpm) ? wpm : 0.0);
         var stepRounded = Round1(stepInterval);
         var secRounded = double.IsFinite(seconds) ? Math.Round(seconds) : seconds;
         var isAtStart = visible <= _pMin + Eps;

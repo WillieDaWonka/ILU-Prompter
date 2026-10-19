@@ -210,6 +210,15 @@ All contract files below go into the scaffold commit **verbatim** and are then *
 - **Bounds**: `Pmin = LineCentre(0) − R` (DESIGN: the first line starts on the reading line, black above).
   `Pmax = EndTop + BaseLineHeight/2 − R` (END's centre on the reading line).
 - **Line on the reading line** = `FindLineAt(P + R)`. Every alignment target puts a line's **centre** on the reading line.
+- **Lines are text lines** (integration, 19 Oct 2026). The line table holds the laid-out lines of paragraphs that have
+  something to read. A blank paragraph (only white space: an empty line, or a section marker whose name is hidden, which
+  the factory empties) is layout space: it has a `ParagraphTop` (so `Sections[i].Top` is still its marker's top) but no
+  line. So the start position, line and paragraph steps, section jumps (`first line with top ≥ Section.Top`) and Line
+  scrolling always put text on the reading line, and the readout counts text lines. Paragraph steps skip paragraphs
+  without lines.
+- **Time estimates** (integration). Display scrolling moves `lpm × BaseLineHeight` per minute whatever is on the lines, so
+  `SecondsRemaining` (Display), `SectionDurations` and `WordsPerMinute` use distance in base lines (gaps and blank
+  paragraphs included); Line scrolling's `SecondsRemaining` and wpm count text lines.
 - **Speed** = UI units −10…+10. `SpeedCurve` converts to lpm and DIP/s using `geometry.BaseLineHeight`.
 - **Time** = `Stopwatch.GetTimestamp()` ticks everywhere (engine, input timestamps).
 
