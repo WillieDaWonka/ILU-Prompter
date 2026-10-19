@@ -5,3 +5,5 @@ obj/
 publish/
 *.suo
 .claude/worktrees/
+Backup/
+UpgradeLog*.htm
