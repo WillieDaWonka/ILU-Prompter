@@ -141,9 +141,12 @@ public sealed partial class LivePanelViewModel : ObservableObject
 
     public string OutputLayoutTabTag => IsOpen && IsOutputLayoutTab ? "open" : "";
 
+    /// <summary>The open tab's name: the flyout's title row.</summary>
+    public string TabTitle => IsControllerTab ? "Controller" : "Output layout";
+
     public string ToggleGlyph => IsOpen ? IluIcons.ChevronDown : IluIcons.Up;
 
-    public string ToggleTooltip => IsOpen ? "Hide this panel (F9)" : "Show this panel (F9)";
+    public string ToggleTooltip => IsOpen ? "Hide this panel" : "Show this panel";
 
     /// <summary>The toggle's screen-reader name: its tooltip without the key.</summary>
     public string ToggleName => IsOpen ? "Hide this panel" : "Show this panel";
@@ -152,7 +155,7 @@ public sealed partial class LivePanelViewModel : ObservableObject
 
     public string TabNameOutputLayoutTooltip => "Output layout: lines, spacing and margins";
 
-    /// <summary>Show or hide the panel (F9, the chevron). Writes the remembered setting.</summary>
+    /// <summary>Show or hide the panel (the chevron on the tab bar, a mouse click). Writes the remembered setting.</summary>
     [RelayCommand]
     public void ToggleOpen() => SetOpen(!IsOpen);
 
@@ -168,15 +171,6 @@ public sealed partial class LivePanelViewModel : ObservableObject
         if (IsOpen && Tab == tab) return;
         var wasHidden = !IsOpen;
         WriteTab(tab);
-        if (wasHidden) SetOpen(true);
-        else RaiseState();
-    }
-
-    /// <summary>Ctrl+F9: open the other tab, showing the panel if it is hidden.</summary>
-    public void OpenOtherTab()
-    {
-        var wasHidden = !IsOpen;
-        WriteTab(Tab == LivePanelTab.Controller ? LivePanelTab.OutputLayout : LivePanelTab.Controller);
         if (wasHidden) SetOpen(true);
         else RaiseState();
     }

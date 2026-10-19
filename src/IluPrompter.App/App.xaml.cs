@@ -16,6 +16,7 @@ namespace IluPrompter.App;
 public partial class App : Application
 {
     private ServiceProvider? _services;
+    private readonly CancellationTokenSource _demoCancel = new();
 
     protected override async void OnStartup(StartupEventArgs e)
     {
@@ -65,6 +66,9 @@ public partial class App : Application
             main.Show();
 
             _services.GetRequiredService<IInputRouter>().Start();
+            // Dev only, never the default: a scripted sequence of fake mouse wheel events, to see the controller drawing move.
+            if (e.Args.Contains("--demo-input", StringComparer.OrdinalIgnoreCase))
+                _ = DemoInput.Start(_services.GetRequiredService<IInputSink>(), log, _demoCancel.Token);
             var session = _services.GetRequiredService<ScriptSession>();
             // A script path on the command line (Explorer "Open with", a shortcut) opens that script instead of the last one.
             var scriptPath = FindScriptPath(e.Args);
@@ -79,6 +83,7 @@ public partial class App : Application
 
     protected override void OnExit(ExitEventArgs e)
     {
+        _demoCancel.Cancel();
         if (_services is not null)
         {
             _services.GetRequiredService<IInputRouter>().Stop();
@@ -91,6 +96,7 @@ public partial class App : Application
     }
 
     /// <summary>Flags that take a value (the next argument), so the value is never mistaken for a script path.</summary>
+    // --demo-input (a dev flag) takes no value.
     private static readonly string[] OptionsWithValue = ["--window-size", "--settings-file"];
 
     /// <summary>The value after <paramref name="option"/>, or null.</summary>

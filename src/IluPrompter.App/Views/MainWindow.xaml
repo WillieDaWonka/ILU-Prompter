@@ -121,7 +121,7 @@
     </Border>
 
     <!-- B, C, D -->
-    <Grid Grid.Row="1" Margin="{StaticResource Ilu.Pad.Window}">
+    <Grid x:Name="BodyGrid" Grid.Row="1" Margin="{StaticResource Ilu.Pad.Window}">
       <Grid.ColumnDefinitions>
         <ColumnDefinition x:Name="SectionsColumn" Width="240"/>
         <ColumnDefinition Width="8"/>
@@ -151,6 +151,44 @@
 
       <!-- D: live column -->
       <v:LiveColumn x:Name="LiveArea" Grid.Column="4" DataContext="{Binding Live}"/>
+
+      <!-- The live panel's body as a flyout over the editor's right edge, when the live column is too short to hold it inline
+           (DESIGN.md "Flyout"): raised, 1 px line-strong, radius 3, no shadow. Its bottom is level with the tab bar's bottom (set in
+           code). It never takes focus, a click elsewhere does not close it and Esc does not close it (Esc keeps meaning pause);
+           it hides while the caret is in the script and comes back with the transport keys. Width min(600, editor width - 16). -->
+      <Border x:Name="PanelFlyout" Grid.Column="2" Panel.ZIndex="15" HorizontalAlignment="Right" VerticalAlignment="Bottom"
+              Background="{StaticResource Ilu.Brush.Raised}" BorderBrush="{StaticResource Ilu.Brush.LineStrong}" BorderThickness="1"
+              CornerRadius="{StaticResource Ilu.Radius.Panel}" Padding="11" Focusable="False"
+              DataContext="{Binding Live.Panel}" Width="{Binding FlyoutWidth}"
+              Visibility="{Binding FlyoutVisible, Converter={x:Static c:BoolToVisibilityConverter.Instance}}"
+              AutomationProperties.Name="Live panel">
+        <Grid>
+          <Grid.RowDefinitions>
+            <RowDefinition Height="28"/>
+            <RowDefinition Height="8"/>
+            <RowDefinition Height="Auto"/>
+          </Grid.RowDefinitions>
+          <Grid>
+            <TextBlock Text="{Binding TabTitle}" Style="{StaticResource Ilu.Text.Heading}" VerticalAlignment="Center"/>
+            <Button Style="{StaticResource Ilu.Button.Toolbar}" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,-2,0,0" Focusable="False"
+                    Command="{Binding ToggleOpenCommand}" ToolTip="Hide this panel" AutomationProperties.Name="Hide this panel">
+              <TextBlock Text="{x:Static t:IluIcons.Close}" Style="{StaticResource Ilu.Text.Icon}"/>
+            </Button>
+          </Grid>
+          <Border Grid.Row="2" Height="{StaticResource Ilu.Size.LivePanelBody}">
+            <Border.Style>
+              <Style TargetType="Border">
+                <Style.Triggers>
+                  <DataTrigger Binding="{Binding IsSmall}" Value="True">
+                    <Setter Property="Height" Value="{StaticResource Ilu.Size.LivePanelBodySmall}"/>
+                  </DataTrigger>
+                </Style.Triggers>
+              </Style>
+            </Border.Style>
+            <v:LivePanelBody RaisedGround="True"/>
+          </Border>
+        </Grid>
+      </Border>
 
       <!-- the sections list as a 280 px flyout over the editor (Esc or a jump closes it) -->
       <Grid x:Name="Flyout" Grid.ColumnSpan="5" Panel.ZIndex="20" Visibility="Collapsed">

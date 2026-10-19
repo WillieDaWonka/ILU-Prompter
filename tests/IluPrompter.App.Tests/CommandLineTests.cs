@@ -31,4 +31,31 @@ public class CommandLineTests
         Assert.Null(App.TryGetOption(["--settings-file"], "--settings-file"));
         Assert.Null(App.TryGetOption(["--diag"], "--settings-file"));
     }
+
+    [Fact]
+    public void TheDemoInputFlag_IsNotAScriptPath_AndIsNotOnByDefault()
+    {
+        Assert.Null(App.FindScriptPath(["--demo-input"]));
+        Assert.DoesNotContain("--demo-input", Environment.GetCommandLineArgs());
+    }
+
+    [Fact]
+    public void TheDemoScript_OnlyEverUsesTheWheelOverThePreview_NoDevice()
+    {
+        var steps = IluPrompter.App.Services.DemoInput.Script(1);
+        Assert.NotEmpty(steps);
+        Assert.All(steps, step =>
+        {
+            Assert.Equal(IluPrompter.Core.ControllerKind.MouseWheel, step.Input.Source.Kind);
+            Assert.Equal(IluPrompter.Core.AppSources.App, step.Input.Source.DeviceId);
+        });
+        Assert.True(steps.Max(s => s.AtMs) < IluPrompter.App.Services.DemoInput.CycleMs);
+        // balanced: the wheel returns to where it started and every button that goes down comes up
+        Assert.Equal(0, steps.Select(s => s.Input).OfType<IluPrompter.Core.RelativeInput>().Sum(r => r.Amount));
+        foreach (var id in steps.Select(s => s.Input).OfType<IluPrompter.Core.ButtonInput>().Select(b => b.ControlId).Distinct())
+        {
+            var edges = steps.Select(s => s.Input).OfType<IluPrompter.Core.ButtonInput>().Where(b => b.ControlId == id).ToList();
+            Assert.Equal(edges.Count(b => b.IsPressed), edges.Count(b => !b.IsPressed));
+        }
+    }
 }

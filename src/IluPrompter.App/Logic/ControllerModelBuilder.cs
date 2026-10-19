@@ -129,15 +129,19 @@ public static class ControllerModelBuilder
         return i.Table.HasInput ? LastText(i) : "No input yet";
     }
 
-    /// <summary>The ShuttlePRO v2 drawing when the device's name contains "PRO" or a button above 5 has been seen; else the ShuttleXpress.</summary>
+    /// <summary>
+    /// The ShuttlePRO v2 drawing (the venue's unit) is the default for a jog-shuttle: it is drawn when the device's name says
+    /// PRO, when no name is known yet, and whenever a button above 5 has been seen. Only a device that names itself a
+    /// ShuttleXpress and has shown no button above 5 gets the ShuttleXpress drawing.
+    /// </summary>
     public static ControllerDrawingKind DrawingFor(ControllerKind kind, DeviceStatus? status, ControllerTableSnapshot table) => kind switch
     {
         ControllerKind.MouseWheel => ControllerDrawingKind.Mouse,
         ControllerKind.Xbox => ControllerDrawingKind.Xbox,
         ControllerKind.JogShuttle =>
-            (status?.DisplayName?.Contains("PRO", StringComparison.OrdinalIgnoreCase) ?? false) || table.MaxShuttleButton > 5
-                ? ControllerDrawingKind.ShuttlePro
-                : ControllerDrawingKind.ShuttleXpress,
+            (status?.DisplayName?.Contains("Xpress", StringComparison.OrdinalIgnoreCase) ?? false) && table.MaxShuttleButton <= 5
+                ? ControllerDrawingKind.ShuttleXpress
+                : ControllerDrawingKind.ShuttlePro,
         _ => ControllerDrawingKind.None,
     };
 
@@ -367,7 +371,7 @@ public static class ControllerModelBuilder
                 var index = PlayerIndex(i.Status, i.Input.Xbox.UserIndex);
                 return (index is { } n ? $"Xbox controller · player {n.ToString(CultureInfo.InvariantCulture)}" : "Xbox controller", "");
             default:
-                return ("Jog-shuttle", drawing == ControllerDrawingKind.ShuttlePro ? "Contour ShuttlePRO v2" : "Contour ShuttleXpress");
+                return ("Jog-shuttle", drawing == ControllerDrawingKind.ShuttleXpress ? "Contour ShuttleXpress" : "Contour ShuttlePRO v2");
         }
     }
 

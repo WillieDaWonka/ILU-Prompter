@@ -2,7 +2,6 @@ using System.Windows.Input;
 using IluPrompter.App.Controls;
 using IluPrompter.App.Logic;
 using IluPrompter.App.ViewModels;
-using IluPrompter.App.Views;
 using IluPrompter.Core;
 
 namespace IluPrompter.App.Tests;
@@ -142,32 +141,15 @@ public class LivePanelTests
     public void WhileHidden_NeitherTabHasTheBar_AndTheToggleOffersToShow()
     {
         var rig = new Rig();
-        Assert.Equal("Hide this panel (F9)", rig.Panel.ToggleTooltip);
+        Assert.Equal("Hide this panel", rig.Panel.ToggleTooltip);
         Assert.Equal(IluPrompter.Theme.IluIcons.ChevronDown, rig.Panel.ToggleGlyph);
         rig.Panel.ToggleOpen();
         Assert.Equal("", rig.Panel.ControllerTabTag);
         Assert.Equal("", rig.Panel.OutputLayoutTabTag);
-        Assert.Equal("Show this panel (F9)", rig.Panel.ToggleTooltip);
+        Assert.Equal("Show this panel", rig.Panel.ToggleTooltip);
         Assert.Equal("Show this panel", rig.Panel.ToggleName);
         Assert.Equal(IluPrompter.Theme.IluIcons.Up, rig.Panel.ToggleGlyph);
         Assert.True(rig.Panel.ShowBarText);
-    }
-
-    [Fact]
-    public void CtrlF9_OpensTheOtherTab_ShowingThePanelIfItIsHidden()
-    {
-        var rig = new Rig();
-        rig.Panel.OpenOtherTab();
-        Assert.Equal(LivePanelTab.OutputLayout, rig.Panel.Tab);
-        Assert.True(rig.Panel.IsOpen);
-
-        rig.Panel.OpenOtherTab();
-        Assert.Equal(LivePanelTab.Controller, rig.Panel.Tab);
-
-        rig.Panel.ToggleOpen();
-        rig.Panel.OpenOtherTab();
-        Assert.True(rig.Panel.IsOpen);
-        Assert.Equal(LivePanelTab.OutputLayout, rig.Panel.Tab);
     }
 
     [Fact]
@@ -331,7 +313,7 @@ public class LivePanelTests
     }
 
     [Fact]
-    public void F9_WhileTheFlyoutIsHiddenByTyping_HidesItForGood()
+    public void ClickingHide_WhileTheFlyoutIsHiddenByTyping_HidesItForGood()
     {
         var rig = new Rig();
         rig.Short();
@@ -429,6 +411,17 @@ public class LivePanelTests
     public void TheTabBar_IgnoresTheTransportKeys(Key key) => Assert.False(PanelTabButton.HandlesKey(key));
 
     [Fact]
+    public void TheLivePanel_HasNoKeyboardShortcut_ItIsMouseOnly()
+    {
+        // The user asked for clickable tabs and a clickable hide icon, so F9 and Ctrl+F9 are not used anywhere.
+        var all = ShortcutCatalog.Groups.SelectMany(g => g.Entries).Select(e => e.Keys)
+            .Concat(DefaultBindings.KeyboardGlobal.Keys).Concat(DefaultBindings.KeyboardTransport.Keys).ToList();
+        Assert.DoesNotContain("F9", all);
+        Assert.DoesNotContain("Ctrl+F9", all);
+        Assert.DoesNotContain("Live panel", string.Join(" ", ShortcutCatalog.Groups.SelectMany(g => g.Entries).Select(e => e.Action)), StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void TheTabBar_AnswersEnter() => Assert.True(PanelTabButton.HandlesKey(Key.Enter));
 
     [WpfFact]
@@ -454,32 +447,5 @@ public class LivePanelTests
         var enter = new KeyEventArgs(Keyboard.PrimaryDevice, source, 0, Key.Enter) { RoutedEvent = Keyboard.KeyDownEvent };
         button.RaiseEvent(enter);
         Assert.Equal(1, clicks);   // Enter presses it, as the design says
-    }
-
-    [Fact]
-    public void F9AndCtrlF9_AreWindowCommands_NotHotKeys()
-    {
-        var f9 = Assert.IsType<KeyGesture>(Assert.Single(AppCommands.ToggleLivePanel.InputGestures));
-        Assert.Equal(Key.F9, f9.Key);
-        Assert.Equal(ModifierKeys.None, f9.Modifiers);
-        var ctrlF9 = Assert.IsType<KeyGesture>(Assert.Single(AppCommands.OtherLivePanelTab.InputGestures));
-        Assert.Equal(Key.F9, ctrlF9.Key);
-        Assert.Equal(ModifierKeys.Control, ctrlF9.Modifiers);
-    }
-
-    [Fact]
-    public void TheShortcutList_NamesF9AndCtrlF9()
-    {
-        var all = ShortcutCatalog.Groups.SelectMany(g => g.Entries).Select(e => e.Keys).ToList();
-        Assert.Contains("F9", all);
-        Assert.Contains("Ctrl+F9", all);
-    }
-
-    [Fact]
-    public void F9AndCtrlF9_AreNotRouterBindings_SoNothingElseTakesThem()
-    {
-        var all = DefaultBindings.KeyboardGlobal.Keys.Concat(DefaultBindings.KeyboardTransport.Keys).ToList();
-        Assert.DoesNotContain("F9", all);
-        Assert.DoesNotContain("Ctrl+F9", all);
     }
 }

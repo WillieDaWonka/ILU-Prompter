@@ -202,7 +202,9 @@ public class ControllerPanelTests
     [InlineData("Contour ShuttleXpress", ControllerDrawingKind.ShuttleXpress, "Contour ShuttleXpress")]
     [InlineData("Contour ShuttlePRO v2", ControllerDrawingKind.ShuttlePro, "Contour ShuttlePRO v2")]
     [InlineData("contour shuttlepro", ControllerDrawingKind.ShuttlePro, "Contour ShuttlePRO v2")]
-    public void TheShuttleDrawing_IsChosenByTheDevicesName(string name, ControllerDrawingKind drawing, string detail)
+    [InlineData("HID-compliant device", ControllerDrawingKind.ShuttlePro, "Contour ShuttlePRO v2")]   // no usable name: the venue's PRO
+    [InlineData("", ControllerDrawingKind.ShuttlePro, "Contour ShuttlePRO v2")]
+    public void TheShuttleDrawing_IsTheProUnlessTheDeviceCallsItselfAnXpress(string name, ControllerDrawingKind drawing, string detail)
     {
         var rig = new Rig(ControllerKind.JogShuttle);
         rig.Connect(Contour, name);
@@ -213,10 +215,10 @@ public class ControllerPanelTests
     }
 
     [Fact]
-    public void AButtonAbove5_SwitchesAnUnnamedShuttleToThePro()
+    public void AButtonAbove5_SwitchesAnXpressNamedShuttleToThePro()
     {
         var rig = new Rig(ControllerKind.JogShuttle);
-        rig.Connect(Contour, "HID device");
+        rig.Connect(Contour, "Contour ShuttleXpress");
         rig.Poll();
         Assert.Equal(ControllerDrawingKind.ShuttleXpress, rig.Model.Frame.Kind);
         rig.Press(Contour, ControlIds.ShuttleButton(5));
@@ -820,6 +822,15 @@ public class ControllerPanelTests
         Assert.Equal(PartLook.Bound, frame.Look("Button8"));      // Switch mode
         Assert.Equal(PartLook.Unbound, frame.Look("Button15"));
         Assert.Contains(rig.Model.Rows, r => r is { Control: "Button 3", Action: "Play / pause" });
+    }
+
+    [Fact]
+    public void BeforeAnyReport_TheMissingShuttleIsDrawnAsThePro()
+    {
+        var rig = new Rig(ControllerKind.JogShuttle);
+        rig.Poll();
+        Assert.Equal(ControllerPanelState.NotFound, rig.Model.State);
+        Assert.Equal(ControllerDrawingKind.ShuttlePro, rig.Model.Frame.Kind);
     }
 
     [Fact]
