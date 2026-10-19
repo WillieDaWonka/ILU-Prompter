@@ -151,9 +151,14 @@ public partial class MainWindow : Window
         if (_devSized) return;
         var bounds = WindowState == WindowState.Normal ? new Rect(Left, Top, Width, Height) : RestoreBounds;
         var maximised = WindowState == WindowState.Maximized;
+        // A window that opened maximised and was never restored has an empty RestoreBounds (Left/Top = +Infinity,
+        // Width/Height = -Infinity): keep the remembered normal bounds and store only the maximised flag.
+        var valid = !bounds.IsEmpty && double.IsFinite(bounds.Left) && double.IsFinite(bounds.Top) && bounds.Width > 0 && bounds.Height > 0;
         _settings.Update(s => s with
         {
-            ControlWindow = new WindowSettings { Left = bounds.Left, Top = bounds.Top, Width = bounds.Width, Height = bounds.Height, IsMaximized = maximised },
+            ControlWindow = valid
+                ? new WindowSettings { Left = bounds.Left, Top = bounds.Top, Width = bounds.Width, Height = bounds.Height, IsMaximized = maximised }
+                : s.ControlWindow with { IsMaximized = maximised },
         });
     }
 
