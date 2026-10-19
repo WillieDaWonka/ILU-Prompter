@@ -26,6 +26,7 @@ public sealed class ControllerPageViewModel : SettingsBackedViewModel, ISettings
     private readonly Dictionary<ControllerKind, DeviceStatus> _status = new();
     private InputEvent? _lastInput;
     private bool _rebuilding;
+    private InputSettings? _listedFor;
     private string _lastRendered = "";
 
     public ControllerPageViewModel(
@@ -150,6 +151,7 @@ public sealed class ControllerPageViewModel : SettingsBackedViewModel, ISettings
     public void RefreshDevices()
     {
         _rebuilding = true;
+        _listedFor = Current.Input;
         Devices.Clear();
         var found = _providers.FirstOrDefault(p => p.Kind == Selected)?.EnumerateDevices() ?? Array.Empty<InputDeviceInfo>();
         switch (Selected)
@@ -326,5 +328,11 @@ public sealed class ControllerPageViewModel : SettingsBackedViewModel, ISettings
         RefreshDevices();
     }
 
-    protected override void OnSettingsReloaded() => RefreshDevices();
+    /// <summary>Re-list devices only when the input settings changed (integration fix): this page lives for the whole
+    /// session once Settings was opened, and every margin drag or speed change used to enumerate the devices again.</summary>
+    protected override void OnSettingsReloaded()
+    {
+        if (ReferenceEquals(Current.Input, _listedFor)) return;
+        RefreshDevices();
+    }
 }

@@ -558,6 +558,49 @@ public class SettingsPageViewModelTests
         Assert.Equal(-1, settings.Current.Input.Xbox.UserIndex);
     }
 
+    private sealed class CountingWheelProvider : IScrollInputProvider
+    {
+        public int Enumerations;
+
+        public ControllerKind Kind => ControllerKind.MouseWheel;
+
+        public bool IsRunning => false;
+
+        public IReadOnlyList<InputDeviceInfo> EnumerateDevices()
+        {
+            Enumerations++;
+            return Array.Empty<InputDeviceInfo>();
+        }
+
+        public void Start(IInputSink sink, string? deviceId) => throw new InvalidOperationException("the page never starts a provider");
+
+        public void Stop()
+        {
+        }
+
+        public void Dispose()
+        {
+        }
+    }
+
+    [Fact]
+    public void ControllerPage_ListsDevicesAgainOnlyWhenTheInputSettingsChange()
+    {
+        var settings = new FakeSettings();
+        var provider = new CountingWheelProvider();
+        var page = new ControllerPageViewModel(settings, new ImmediateUi(), new FakeRouter(), new FakeOutput(), [provider]);
+        var listed = provider.Enumerations;
+
+        // Margins, speed, lines: nothing to do with input devices.
+        settings.Update(s => s with { Text = s.Text with { LinesVisible = 6 } });
+        settings.Update(s => s with { Margins = s.Margins with { Left = 0.2 } });
+        Assert.Equal(listed, provider.Enumerations);
+
+        settings.Update(s => s with { Input = s.Input with { Wheel = s.Input.Wheel with { DedicatedDeviceId = "fake-mouse" } } }); // fake settings and router: nothing starts
+        Assert.Equal(listed + 1, provider.Enumerations);
+        Assert.NotNull(page);
+    }
+
     [Fact]
     public void ControllerPage_SensitivityEditsTheRightBinding()
     {

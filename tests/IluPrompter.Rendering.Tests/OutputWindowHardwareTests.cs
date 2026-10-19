@@ -86,7 +86,7 @@ public class OutputWindowHardwareTests
             window.Show();
             await Dispatcher.Yield(DispatcherPriority.ContextIdle);
             Assert.True(window.ShowInTaskbar);
-            Assert.False(window.Topmost);
+            Assert.True(window.Topmost); // integration: stays visible over the maximised control window on one display
             var ex = ExStyle(window);
             Assert.False(ex.HasFlag(WINDOW_EX_STYLE.WS_EX_NOACTIVATE));
             Assert.False(ex.HasFlag(WINDOW_EX_STYLE.WS_EX_TOOLWINDOW));
