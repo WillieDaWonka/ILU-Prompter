@@ -7,8 +7,14 @@
   <!-- Settings > Output. DataContext: OutputPageViewModel. All output layout in one place (DESIGN.md D7). -->
   <StackPanel MaxWidth="560" HorizontalAlignment="Left">
     <TextBlock Text="Display" Style="{StaticResource Ilu.Text.Heading}" Margin="0,0,0,6"/>
-    <ComboBox Width="440" HorizontalAlignment="Left" ItemsSource="{Binding Displays}" DisplayMemberPath="Label" SelectedValuePath="Id"
-              SelectedValue="{Binding SelectedDisplayId, Mode=TwoWay}" AutomationProperties.Name="Output display"/>
+    <ComboBox Width="440" HorizontalAlignment="Left" ItemsSource="{Binding Displays}" SelectedValuePath="Id"
+              SelectedValue="{Binding SelectedDisplayId, Mode=TwoWay}" AutomationProperties.Name="Output display">
+        <ComboBox.ItemTemplate>
+          <DataTemplate>
+            <TextBlock Text="{Binding Label}" Style="{StaticResource Ilu.Text.Body}" TextWrapping="NoWrap"/>
+          </DataTemplate>
+        </ComboBox.ItemTemplate>
+      </ComboBox>
     <TextBlock Text="{Binding DisplayHint}" Style="{StaticResource Ilu.Text.Caption}" TextWrapping="Wrap" Margin="0,6,0,0"/>
 
     <TextBlock Text="Margins" Style="{StaticResource Ilu.Text.Heading}" Margin="0,24,0,2"/>

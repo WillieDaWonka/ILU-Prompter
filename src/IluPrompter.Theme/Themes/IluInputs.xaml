@@ -255,10 +255,7 @@
             <Border x:Name="Bd" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
                     BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="{StaticResource Ilu.Radius.Control}"
                     SnapsToDevicePixels="True"/>
-            <ContentPresenter x:Name="Content" Margin="8,0,32,0" Content="{TemplateBinding SelectionBoxItem}"
-                              ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
-                              ContentStringFormat="{TemplateBinding SelectionBoxItemStringFormat}"
-                              VerticalAlignment="Center" HorizontalAlignment="Left" IsHitTestVisible="False"/>
+            <ContentPresenter x:Name="Content" Margin="8,0,32,0" ContentSource="SelectionBoxItem" VerticalAlignment="Center" HorizontalAlignment="Left" IsHitTestVisible="False"/>
             <ToggleButton x:Name="Toggle" Template="{StaticResource Ilu.ComboBox.Toggle}" Focusable="False" ClickMode="Press"
                           IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}"/>
             <Popup x:Name="PART_Popup" Placement="Bottom" IsOpen="{TemplateBinding IsDropDownOpen}" AllowsTransparency="True"

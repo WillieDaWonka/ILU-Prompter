@@ -37,5 +37,5 @@ public static class IluIcons
     public const string Close = "";
     public const string Mouse = "";
     public const string Gamepad = "";
-    public const string Dial = "";
+    public const string Dial = "";
 }
