@@ -785,7 +785,8 @@ where you put it.
   bar, turned on its side). The other tab: `text-muted`; hover `text` on `raised`. While the panel is hidden neither
   tab has the bar and both are `text-muted`.
 - Hide / show: a 32 × 32 `toolbar-button` at the right end; ChevronDown (E70D) while open, ChevronUp (E70E) while
-  hidden. Tooltip "Hide this panel (F9)" / "Show this panel (F9)".
+  hidden. Tooltip "Hide this panel" / "Show this panel". The whole panel is mouse-operated: there is no keyboard shortcut for it
+  (user decision, 19 Oct 2026).
 - While the controller drawing is not on screen (panel hidden, Output layout open, or the flyout closed), the
   last-input line sits in the bar, right-aligned between the tabs and the toggle, in `caption`: "Last: A · Play /
   pause". It clips at its left edge, with the full text in its tooltip. While the drawing is on screen the line is in
@@ -820,14 +821,14 @@ and the 1024 × 600 minimum all fit after step 2 at most.
   bottom. Width min(600, editor width − 16); the large drawing when its inner width is at least 576, else the small
   one. Height: title row 28 + 8 + body + padding.
 - The menu and flyout skin: `raised`, 1 px `line-strong`, radius 3, padding 12, no shadow. Title row: the open
-  tab's name in `heading`, and at the right a 32 × 32 Hide button (Cancel, E711; tooltip "Hide this panel (F9)").
+  tab's name in `heading`, and at the right a 32 × 32 Hide button (Cancel, E711; tooltip "Hide this panel").
   Controls drawn on `raised` take `pressed` as their rest fill (see "Controller drawing").
 - Non-modal and quiet: it never takes focus; a click elsewhere doesn't close it (it is a monitor you keep open
   through a show); Esc doesn't close it (Esc keeps its transport meaning, pause).
 - It hides while the caret is in the script (keys "Typing") and comes back when the keys return to the transport,
   so it never covers the line you are typing.
 - It never opens by itself: it is closed at every launch and whenever the window changes size, and opens only from
-  a tab, the toggle or F9.
+  a tab or the toggle (a mouse click).
 
 **Remembered** (app settings, not per script, in `ControlWindow`): `LivePanelTab` (`Controller` | `OutputLayout`,
 default `Controller`) and `LivePanelOpen` (default true). An inline body follows `LivePanelOpen` at launch; the
@@ -835,8 +836,8 @@ flyout ignores it at launch (above), but opening or hiding the flyout writes it.
 ARCHITECTURE §2.8 `WindowSettings`.
 
 **Keyboard.**
-- **F9** (global, works while typing): show or hide the panel. **Ctrl+F9** (global): open the other tab, showing the
-  panel if it is hidden. Shell shortcuts like Ctrl+, (not `PrompterCommand`s), listed on Settings › Shortcuts.
+- **No shortcut for the panel.** Showing, hiding and switching tabs are mouse clicks on the tab bar (the user asked for a
+  clickable icon tab); F9 and Ctrl+F9 are not used, so nothing else loses a key and no key can hide the panel by accident.
 - Focus order, after Blank output: the Controller tab, the Output layout tab, Hide / show, then the open tab's
   fields (Output layout only; the drawing is a readout and takes no focus).
 - The tabs and the toggle answer Enter and the mouse only. Space, the arrows, Home, Page Up / Page Down, Ctrl+Up /
@@ -846,8 +847,7 @@ ARCHITECTURE §2.8 `WindowSettings`.
 - In the Output layout number boxes, keys work as in any text input (`app:text`: only the global shortcuts reach
   the transport), as before.
 
-**Screen readers.** The bar is a tab list named "Live panel" with two tabs; the toggle's name is its tooltip without
-the key. The drawing is named "Controller drawing: Xbox controller" (and so on); the panel's text is plain text. The
+**Screen readers.** The bar is a tab list named "Live panel" with two tabs; the toggle's name is its tooltip. The drawing is named "Controller drawing: Xbox controller" (and so on); the panel's text is plain text. The
 last-input line is not a live region: it would speak over every press.
 
 ### Output layout tab (D7)
@@ -881,8 +881,10 @@ the moving parts), scaled by one `ScaleTransform` (1.0 or 0.75); stroke widths s
 scaled canvas, because text never shrinks below 13 DIP. The one exception is the Xbox A / B / X / Y letters, which
 are `TextBlock`s placed over the button centres in the large drawing only (`label`, Poppins 13 / 500). The drawing
 has no ground of its own; it sits on the panel. Which drawing: MouseWheel gives the mouse; Xbox gives the Xbox; for
-JogShuttle, the ShuttlePRO v2 when the device's name (`DeviceStatus.DisplayName`) contains "PRO" or any button above
-5 has been seen, otherwise the ShuttleXpress.
+JogShuttle, the **ShuttlePRO v2**, the venue's unit and the most polished drawing: it is shown when the device's name
+(`DeviceStatus.DisplayName`) contains "PRO", when no name is known yet (before the first report, or a generic HID name),
+and whenever a button above 5 has been seen. Only a device that names itself a ShuttleXpress, and has shown no button
+above 5, gets the ShuttleXpress drawing (user decision, 19 Oct 2026).
 
 **Roles and tokens** (no new colour tokens, no hex outside `IluTokens.xaml`):
 
@@ -1168,8 +1170,6 @@ paused while typing.
 | F8 | Blank output on / off |
 | F11 | Show / hide the output window |
 | Esc | In the script: leave the script (keys go to the transport). In transport: pause (never blanks, never closes) |
-| F9 | Show / hide the live panel (Controller, Output layout) |
-| Ctrl+F9 | Open the live panel's other tab |
 | Ctrl+, | Settings |
 | Ctrl+/ | Shortcut list |
 | Ctrl+N, Ctrl+O, Ctrl+S, Ctrl+Shift+S | New, open, save, save as |
@@ -1419,7 +1419,7 @@ ways. No colour tokens are new.
 | 15 | Control-window motion | Both: no motion; this file: "the control window never moves" | The controller drawing changes in steps up to 10 times a second (lights, stick dots, trigger fills, ring arc, wheel treads), never tweened | It is a readout of your hands, like the speed readout. Steps on the existing 10 Hz poll keep ARCHITECTURE §3 rule 10 (no per-frame work while LIVE) |
 | 16 | Flashing | "Nothing flashes or blinks" | Controls light on press, held at least 300 ms (400 ms for the wheel and jog) | So a control changes at most about three times a second, in areas far below WCAG 2.3.1's flash threshold; fast repeats read as one steady light |
 | 17 | Illustration | Neither house file draws hardware | Flat line drawings of four controllers, from existing tokens only (`line-strong` outline, `text` when lit) | The user asked to see the controller react. Schematic, not photographic: no shading, no gradients, no product colours, no logos |
-| 18 | Tabs | No tab pattern in either; Windows tabs move with the arrows and Ctrl+Tab | Text tabs with a 2 px `text-strong` bar under the open one; Enter and the mouse only | Arrows, Home and Page Up / Down are transport keys and must never be taken by a focused tab; F9 and Ctrl+F9 reach the panel from anywhere |
+| 18 | Tabs | No tab pattern in either; Windows tabs move with the arrows and Ctrl+Tab | Text tabs with a 2 px `text-strong` bar under the open one; Enter and the mouse only | Arrows, Home and Page Up / Down are transport keys and must never be taken by a focused tab; the panel has no shortcut, so a click is the only way to hide or switch it |
 | 19 | Flyouts | Sections flyout: closes on Esc or a jump | The live panel's flyout stays open until you hide it, hides itself only while you type in the script, never takes focus | It is a monitor kept open through a show; Esc must keep meaning pause |
 | 20 | Margin editor at Compact | This file (first version): "margin editor in Settings" below Wide | The Output layout tab, in every tier (a compact form without the diagram in the small body) | The tab replaces the fixed block, so it exists wherever the panel does; Settings › Output keeps the full editor |
 
@@ -1434,9 +1434,9 @@ ways. No colour tokens are new.
    lets the preview grow, which only helps outputs taller than 16:9 and moves the transport down.
 6. **ShuttlePRO v2 layout**: the drawing places its 15 buttons as rows of 4 and 5, two either side of the ring and
    two thumb buttons, numbered left to right, top to bottom. Please check against the venue's unit (or a photo), and
-   whether the venue has a ShuttleXpress, a ShuttlePRO v2, or both.
-7. **F9 for the live panel** (Ctrl+F9 for its other tab): free in the app and in the editor. Is F9 used by anything
-   else on the operator laptop (Companion, a capture tool)?
+   whether the venue has a ShuttleXpress, a ShuttlePRO v2, or both. (The venue's jog controller is a ShuttlePRO v2, so
+   that drawing is the primary one; the layout still needs checking against the unit.)
+7. ~~F9 for the live panel~~: dropped. The user wants a mouse-clickable icon tab, no keyboard shortcut.
 8. **Default tab**: Controller (proposed) or Output layout on first run?
 
 ## Decisions Log
@@ -1450,6 +1450,7 @@ ways. No colour tokens are new.
 | 2026-10-19 | Preview lays out at the output's size and scales | Exact line breaks and margins in the preview |
 | 2026-10-19 | Output carries no chrome; problems only in the control window | The presenter sees only the words |
 | 2026-10-19 | Two key modes (typing / transport), F5, F8, F11, Esc global | Space and arrows can drive the transport without stealing them from the editor |
-| 2026-10-19 | D7 becomes the live panel: tabs Controller (default) and Output layout, hideable (F9), body inline large / inline small / flyout by the column's height | User request: margin editor as a tab that can be hidden, and a live controller mock-up in its place. Controller is the show-time view; layout is set-up |
+| 2026-10-19 | D7 becomes the live panel: tabs Controller (default) and Output layout, hideable by a clickable chevron (no shortcut), body inline large / inline small / flyout by the column's height | User request: margin editor as a tab that can be hidden, and a live controller mock-up in its place. Controller is the show-time view; layout is set-up |
 | 2026-10-19 | Controller drawing: flat line drawings with ControlId-named parts, lit on press with a 300 ms hold, what-it-did rows, updated only on the 10 Hz poll | Feedback you can trust mid-show, without per-frame UI work while LIVE (ARCHITECTURE §3 rule 10); SVG drafts in `docs/design/` |
 | 2026-10-19 | Controller defaults table corrected to `DefaultBindings` (jog-shuttle buttons) | The table had drifted from the code |
+| 2026-10-19 | No F9 or Ctrl+F9; the live panel is mouse-only (clickable tabs and a clickable hide chevron). Hidden panel frees nothing. The ShuttlePRO v2 is the primary jog-shuttle drawing | User decisions on the live panel: "a mouse clickable icon tab"; the venue's unit is a ShuttlePRO v2 |

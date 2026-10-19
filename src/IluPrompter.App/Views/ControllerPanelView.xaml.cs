@@ -121,7 +121,7 @@ public partial class ControllerPanelView : UserControl
         RowsList.Visibility = model.State == ControllerPanelState.InUse ? Visibility.Visible : Visibility.Collapsed;
         NoInputPanel.Visibility = model.State == ControllerPanelState.NoInputYet ? Visibility.Visible : Visibility.Collapsed;
         MissingPanel.Visibility = missing ? Visibility.Visible : Visibility.Collapsed;
-        DetailText.Visibility = missing ? Visibility.Collapsed : Visibility.Visible;
+        DetailText.Visibility = missing || _appliedSmall == true ? Visibility.Collapsed : Visibility.Visible;   // no detail line in the small body
 
         ShowDrawing(model.Frame);
         ApplyBattery(model.Battery);

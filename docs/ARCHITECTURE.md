@@ -2303,7 +2303,10 @@ only against contracts, never against another stream's internals.
     - Transport bar → `IInputRouter.Execute`.
     - Speed control (−10…10 track centred on 0, ±0.5 / Shift ±0.1, `readout`, ≈ wpm) → `EngineCommand.SetSpeed`.
     - Mode switch, Blank toggle, readouts (10 Hz `Status` poll).
-    - D7 output layout: lines visible, spacing, margin editor using `MarginMath` with the link toggle.
+    - D7 live panel (added 19 Oct 2026, see `docs/streams/D-shell.md`): tabs Controller | Output layout and a clickable hide
+      chevron (mouse only, no shortcut). Output layout: lines visible, spacing, margin editor using `MarginMath` with the
+      link toggle. Controller: a live drawing of the chosen controller from `IInputRouter.InputObserved` and
+      `DeviceStatusChanged`; the input thread only records into a table, the existing 10 Hz status poll reads it (§3 rule 10).
   - **App bar, status bar, menus;** file New/Open/Save/Save As/Export (WPF OpenFileDialog/SaveFileDialog,
     `IScriptFileService`, `ISnapshotBuilder.LoadInto/ToScriptFile`, `IPromptDocumentService.SetFileInfo`); recent files.
     InputBindings: Ctrl+N/O/S/Shift+S, Ctrl+, (Settings), Ctrl+/ (shortcuts), F2 (go to script).
