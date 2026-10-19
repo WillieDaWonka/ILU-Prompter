@@ -45,7 +45,7 @@ public static class XamlSanitizer
         "IsHyphenationEnabled", "FlowDirection", "Margin", "Padding", "BorderBrush", "BorderThickness",
         "KeepTogether", "KeepWithNext", "MinOrphanLines", "MinWidowLines", "BaselineAlignment",
         "MarkerStyle", "MarkerOffset", "StartIndex", "ColumnSpan", "RowSpan", "Width", "CellSpacing",
-        "HasTrailingParagraphEnd",
+        "HasTrailingParagraphEnd", "HasTrailingParagraphBreakOnPaste",
     };
 
     /// <summary>Attributes that only describe the host document; dropped from the root element.</summary>
