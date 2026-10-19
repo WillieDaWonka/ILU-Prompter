@@ -1,0 +1,128 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <!-- DESIGN.md "Typography": every Ilu.Text.* TextBlock style. Sizes are fixed DIPs, never auto-fitted.
+       Line heights are absolute with BlockLineHeight. Poppins weights group under one family name
+       (checked on the build machine: Regular 400, Medium 500, SemiBold 600), so FontWeight is used. -->
+  <ResourceDictionary.MergedDictionaries>
+    <ResourceDictionary Source="/IluPrompter.Theme;component/Themes/IluTokens.xaml"/>
+  </ResourceDictionary.MergedDictionaries>
+
+  <Style x:Key="Ilu.Text.Title" TargetType="TextBlock">
+    <Setter Property="FontFamily" Value="{StaticResource Ilu.Font.Ui}"/>
+    <Setter Property="FontSize" Value="20"/>
+    <Setter Property="FontWeight" Value="SemiBold"/>
+    <Setter Property="LineHeight" Value="26"/>
+    <Setter Property="LineStackingStrategy" Value="BlockLineHeight"/>
+    <Setter Property="Foreground" Value="{StaticResource Ilu.Brush.TextStrong}"/>
+  </Style>
+
+  <Style x:Key="Ilu.Text.Heading" TargetType="TextBlock">
+    <Setter Property="FontFamily" Value="{StaticResource Ilu.Font.Ui}"/>
+    <Setter Property="FontSize" Value="14"/>
+    <Setter Property="FontWeight" Value="SemiBold"/>
+    <Setter Property="LineHeight" Value="20"/>
+    <Setter Property="LineStackingStrategy" Value="BlockLineHeight"/>
+    <Setter Property="Foreground" Value="{StaticResource Ilu.Brush.TextStrong}"/>
+  </Style>
+
+  <Style x:Key="Ilu.Text.Body" TargetType="TextBlock">
+    <Setter Property="FontFamily" Value="{StaticResource Ilu.Font.Ui}"/>
+    <Setter Property="FontSize" Value="14"/>
+    <Setter Property="FontWeight" Value="Normal"/>
+    <Setter Property="LineHeight" Value="21"/>
+    <Setter Property="LineStackingStrategy" Value="BlockLineHeight"/>
+    <Setter Property="TextWrapping" Value="Wrap"/>
+  </Style>
+
+  <Style x:Key="Ilu.Text.Label" TargetType="TextBlock">
+    <Setter Property="FontFamily" Value="{StaticResource Ilu.Font.Ui}"/>
+    <Setter Property="FontSize" Value="13"/>
+    <Setter Property="FontWeight" Value="Medium"/>
+    <Setter Property="LineHeight" Value="18"/>
+    <Setter Property="LineStackingStrategy" Value="BlockLineHeight"/>
+  </Style>
+
+  <Style x:Key="Ilu.Text.Caption" TargetType="TextBlock">
+    <Setter Property="FontFamily" Value="{StaticResource Ilu.Font.Ui}"/>
+    <Setter Property="FontSize" Value="13"/>
+    <Setter Property="FontWeight" Value="Normal"/>
+    <Setter Property="LineHeight" Value="18"/>
+    <Setter Property="LineStackingStrategy" Value="BlockLineHeight"/>
+    <Setter Property="Foreground" Value="{StaticResource Ilu.Brush.TextMuted}"/>
+  </Style>
+
+  <Style x:Key="Ilu.Text.Button" TargetType="TextBlock">
+    <Setter Property="FontFamily" Value="{StaticResource Ilu.Font.Ui}"/>
+    <Setter Property="FontSize" Value="14"/>
+    <Setter Property="FontWeight" Value="Medium"/>
+    <Setter Property="LineHeight" Value="17"/>
+    <Setter Property="LineStackingStrategy" Value="BlockLineHeight"/>
+  </Style>
+
+  <Style x:Key="Ilu.Text.ButtonPrimary" TargetType="TextBlock">
+    <Setter Property="FontFamily" Value="{StaticResource Ilu.Font.Ui}"/>
+    <Setter Property="FontSize" Value="14"/>
+    <Setter Property="FontWeight" Value="SemiBold"/>
+    <Setter Property="LineHeight" Value="17"/>
+    <Setter Property="LineStackingStrategy" Value="BlockLineHeight"/>
+  </Style>
+
+  <Style x:Key="Ilu.Text.State" TargetType="TextBlock">
+    <Setter Property="FontFamily" Value="{StaticResource Ilu.Font.Ui}"/>
+    <Setter Property="FontSize" Value="14"/>
+    <Setter Property="FontWeight" Value="SemiBold"/>
+    <Setter Property="LineHeight" Value="15"/>
+    <Setter Property="LineStackingStrategy" Value="BlockLineHeight"/>
+  </Style>
+
+  <Style x:Key="Ilu.Text.Mono" TargetType="TextBlock">
+    <Setter Property="FontFamily" Value="{StaticResource Ilu.Font.Mono}"/>
+    <Setter Property="FontSize" Value="14"/>
+    <Setter Property="FontWeight" Value="Medium"/>
+    <Setter Property="LineHeight" Value="18"/>
+    <Setter Property="LineStackingStrategy" Value="BlockLineHeight"/>
+  </Style>
+
+  <Style x:Key="Ilu.Text.Readout" TargetType="TextBlock">
+    <Setter Property="FontFamily" Value="{StaticResource Ilu.Font.Mono}"/>
+    <Setter Property="FontSize" Value="24"/>
+    <Setter Property="FontWeight" Value="Medium"/>
+    <Setter Property="LineHeight" Value="26"/>
+    <Setter Property="LineStackingStrategy" Value="BlockLineHeight"/>
+    <Setter Property="Foreground" Value="{StaticResource Ilu.Brush.TextStrong}"/>
+  </Style>
+
+  <Style x:Key="Ilu.Text.Icon" TargetType="TextBlock">
+    <Setter Property="FontFamily" Value="{StaticResource Ilu.Font.Icon}"/>
+    <Setter Property="FontSize" Value="16"/>
+    <Setter Property="LineHeight" Value="16"/>
+    <Setter Property="LineStackingStrategy" Value="BlockLineHeight"/>
+    <Setter Property="TextAlignment" Value="Center"/>
+  </Style>
+
+  <Style x:Key="Ilu.Text.IconTransport" TargetType="TextBlock">
+    <Setter Property="FontFamily" Value="{StaticResource Ilu.Font.Icon}"/>
+    <Setter Property="FontSize" Value="20"/>
+    <Setter Property="LineHeight" Value="20"/>
+    <Setter Property="LineStackingStrategy" Value="BlockLineHeight"/>
+    <Setter Property="TextAlignment" Value="Center"/>
+  </Style>
+
+  <!-- Chip glyphs (geometric shapes: triangle, square, cross) come from a text symbol font, never an emoji font. -->
+  <FontFamily x:Key="Ilu.Font.Symbol">Segoe UI Symbol, Segoe UI</FontFamily>
+  <Style x:Key="Ilu.Text.Glyph" TargetType="TextBlock">
+    <Setter Property="FontFamily" Value="{StaticResource Ilu.Font.Symbol}"/>
+    <Setter Property="FontSize" Value="13"/>
+    <Setter Property="LineHeight" Value="15"/>
+    <Setter Property="LineStackingStrategy" Value="BlockLineHeight"/>
+  </Style>
+
+  <!-- editor: the script in its own output face (Poppins by default) -->
+  <Style x:Key="Ilu.Text.Editor" TargetType="TextBlock">
+    <Setter Property="FontFamily" Value="{StaticResource Ilu.Font.Ui}"/>
+    <Setter Property="FontSize" Value="20"/>
+    <Setter Property="FontWeight" Value="Medium"/>
+    <Setter Property="LineHeight" Value="28"/>
+    <Setter Property="LineStackingStrategy" Value="BlockLineHeight"/>
+  </Style>
+</ResourceDictionary>

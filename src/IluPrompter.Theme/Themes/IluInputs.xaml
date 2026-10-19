@@ -1,0 +1,366 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:sys="clr-namespace:System;assembly=mscorlib"
+                    xmlns:t="clr-namespace:IluPrompter.Theme">
+  <!-- DESIGN.md "Components": input, drop-down, check box, radio, editor paper, speed slider. No native white control. -->
+  <ResourceDictionary.MergedDictionaries>
+    <ResourceDictionary Source="/IluPrompter.Theme;component/Themes/IluTokens.xaml"/>
+    <ResourceDictionary Source="/IluPrompter.Theme;component/Themes/IluButtons.xaml"/>
+  </ResourceDictionary.MergedDictionaries>
+
+  <!-- ===== TextBox: canvas fill, line-strong edge, 2 px focus edge with padding reduced 1 px ===== -->
+  <Style x:Key="Ilu.TextBox" TargetType="TextBox">
+    <Setter Property="FontFamily" Value="{StaticResource Ilu.Font.Ui}"/>
+    <Setter Property="FontSize" Value="14"/>
+    <Setter Property="Foreground" Value="{StaticResource Ilu.Brush.Text}"/>
+    <Setter Property="Background" Value="{StaticResource Ilu.Brush.Canvas}"/>
+    <Setter Property="BorderBrush" Value="{StaticResource Ilu.Brush.LineStrong}"/>
+    <Setter Property="BorderThickness" Value="1"/>
+    <Setter Property="Padding" Value="8,0"/>
+    <Setter Property="MinHeight" Value="{StaticResource Ilu.Size.ControlInput}"/>
+    <Setter Property="VerticalContentAlignment" Value="Center"/>
+    <Setter Property="CaretBrush" Value="{StaticResource Ilu.Brush.TextStrong}"/>
+    <Setter Property="SelectionBrush" Value="{StaticResource Ilu.Brush.Selection}"/>
+    <Setter Property="SelectionTextBrush" Value="{StaticResource Ilu.Brush.TextStrong}"/>
+    <Setter Property="SelectionOpacity" Value="0.4"/>
+    <Setter Property="SnapsToDevicePixels" Value="True"/>
+    <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="TextBox">
+          <Border x:Name="Bd" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                  BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="{StaticResource Ilu.Radius.Control}"
+                  SnapsToDevicePixels="True">
+            <ScrollViewer x:Name="PART_ContentHost" Padding="{TemplateBinding Padding}" VerticalAlignment="Center"
+                          Focusable="False" HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Hidden"/>
+          </Border>
+          <ControlTemplate.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+              <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource Ilu.Brush.TextMuted}"/>
+            </Trigger>
+            <Trigger Property="IsKeyboardFocused" Value="True">
+              <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource Ilu.Brush.Focus}"/>
+              <Setter TargetName="Bd" Property="BorderThickness" Value="2"/>
+              <Setter Property="Padding" Value="7,0"/>
+            </Trigger>
+            <Trigger Property="IsEnabled" Value="False">
+              <Setter Property="Foreground" Value="{StaticResource Ilu.Brush.Disabled}"/>
+              <Setter TargetName="Bd" Property="Background" Value="{StaticResource Ilu.Brush.Surface}"/>
+              <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource Ilu.Brush.Line}"/>
+            </Trigger>
+          </ControlTemplate.Triggers>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+  <Style TargetType="TextBox" BasedOn="{StaticResource Ilu.TextBox}"/>
+
+  <Style x:Key="Ilu.TextBox.Mono" TargetType="TextBox" BasedOn="{StaticResource Ilu.TextBox}">
+    <Setter Property="FontFamily" Value="{StaticResource Ilu.Font.Mono}"/>
+    <Setter Property="FontWeight" Value="Medium"/>
+  </Style>
+
+  <!-- ===== Editor paper: the script on script-paper. Selection is `selection`; no white anywhere. ===== -->
+  <Style x:Key="Ilu.RichTextBox.Paper" TargetType="RichTextBox">
+    <Setter Property="FontFamily" Value="{StaticResource Ilu.Font.Ui}"/>
+    <Setter Property="FontSize" Value="20"/>
+    <Setter Property="FontWeight" Value="Medium"/>
+    <Setter Property="Foreground" Value="{StaticResource Ilu.Brush.ScriptInk}"/>
+    <Setter Property="Background" Value="Transparent"/>
+    <Setter Property="BorderThickness" Value="0"/>
+    <Setter Property="Padding" Value="0"/>
+    <Setter Property="CaretBrush" Value="{StaticResource Ilu.Brush.ScriptInk}"/>
+    <Setter Property="SelectionBrush" Value="{StaticResource Ilu.Brush.Selection}"/>
+    <Setter Property="SelectionTextBrush" Value="{StaticResource Ilu.Brush.ScriptInk}"/>
+    <Setter Property="SelectionOpacity" Value="0.4"/>
+    <Setter Property="AcceptsReturn" Value="True"/>
+    <Setter Property="AcceptsTab" Value="True"/>
+    <Setter Property="IsInactiveSelectionHighlightEnabled" Value="True"/>
+    <Setter Property="VerticalScrollBarVisibility" Value="Auto"/>
+    <Setter Property="HorizontalScrollBarVisibility" Value="Disabled"/>
+    <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+    <Setter Property="SnapsToDevicePixels" Value="True"/>
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="RichTextBox">
+          <Border Background="{TemplateBinding Background}" BorderThickness="0" SnapsToDevicePixels="True">
+            <ScrollViewer x:Name="PART_ContentHost" Focusable="False" Padding="{TemplateBinding Padding}"
+                          HorizontalScrollBarVisibility="{TemplateBinding HorizontalScrollBarVisibility}"
+                          VerticalScrollBarVisibility="{TemplateBinding VerticalScrollBarVisibility}"/>
+          </Border>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <!-- ===== CheckBox: 22 px indicator, line-strong rim on canvas; checked = text fill + dark tick. Whole row is the target. ===== -->
+  <Style x:Key="Ilu.CheckBox" TargetType="CheckBox">
+    <Setter Property="FontFamily" Value="{StaticResource Ilu.Font.Ui}"/>
+    <Setter Property="FontSize" Value="14"/>
+    <Setter Property="Foreground" Value="{StaticResource Ilu.Brush.Text}"/>
+    <Setter Property="Background" Value="Transparent"/>
+    <Setter Property="MinHeight" Value="32"/>
+    <Setter Property="Padding" Value="10,0,0,0"/>
+    <Setter Property="SnapsToDevicePixels" Value="True"/>
+    <Setter Property="FocusVisualStyle" Value="{StaticResource Ilu.FocusVisual.Small}"/>
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="CheckBox">
+          <Border x:Name="Row" Background="{TemplateBinding Background}" Padding="2">
+            <Grid>
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+              </Grid.ColumnDefinitions>
+              <Border x:Name="Box" Width="22" Height="22" Background="{StaticResource Ilu.Brush.Canvas}"
+                      BorderBrush="{StaticResource Ilu.Brush.LineStrong}" BorderThickness="1"
+                      CornerRadius="{StaticResource Ilu.Radius.Chip}" VerticalAlignment="Center">
+                <Path x:Name="Tick" Data="M 5,11 L 9,15 L 17,6" Stroke="{StaticResource Ilu.Brush.Canvas}" StrokeThickness="2.4"
+                      StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round" Visibility="Collapsed"/>
+              </Border>
+              <ContentPresenter Grid.Column="1" Margin="{TemplateBinding Padding}" VerticalAlignment="Center"
+                                RecognizesAccessKey="True"/>
+            </Grid>
+          </Border>
+          <ControlTemplate.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+              <Setter TargetName="Box" Property="BorderBrush" Value="{StaticResource Ilu.Brush.TextMuted}"/>
+            </Trigger>
+            <Trigger Property="IsChecked" Value="True">
+              <Setter TargetName="Box" Property="Background" Value="{StaticResource Ilu.Brush.Text}"/>
+              <Setter TargetName="Box" Property="BorderBrush" Value="{StaticResource Ilu.Brush.Text}"/>
+              <Setter TargetName="Tick" Property="Visibility" Value="Visible"/>
+            </Trigger>
+            <Trigger Property="IsEnabled" Value="False">
+              <Setter Property="Foreground" Value="{StaticResource Ilu.Brush.Disabled}"/>
+              <Setter TargetName="Box" Property="BorderBrush" Value="{StaticResource Ilu.Brush.Line}"/>
+              <Setter TargetName="Box" Property="Background" Value="{StaticResource Ilu.Brush.Surface}"/>
+            </Trigger>
+          </ControlTemplate.Triggers>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+  <Style TargetType="CheckBox" BasedOn="{StaticResource Ilu.CheckBox}"/>
+
+  <!-- ===== RadioButton (labelled option): 22 px circle ===== -->
+  <Style x:Key="Ilu.RadioButton" TargetType="RadioButton">
+    <Setter Property="FontFamily" Value="{StaticResource Ilu.Font.Ui}"/>
+    <Setter Property="FontSize" Value="14"/>
+    <Setter Property="Foreground" Value="{StaticResource Ilu.Brush.Text}"/>
+    <Setter Property="Background" Value="Transparent"/>
+    <Setter Property="MinHeight" Value="32"/>
+    <Setter Property="Padding" Value="10,0,0,0"/>
+    <Setter Property="SnapsToDevicePixels" Value="True"/>
+    <Setter Property="FocusVisualStyle" Value="{StaticResource Ilu.FocusVisual.Small}"/>
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="RadioButton">
+          <Border Background="{TemplateBinding Background}" Padding="2">
+            <Grid>
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+              </Grid.ColumnDefinitions>
+              <Grid VerticalAlignment="Center" Width="22" Height="22">
+                <Ellipse x:Name="Rim" Fill="{StaticResource Ilu.Brush.Canvas}" Stroke="{StaticResource Ilu.Brush.LineStrong}" StrokeThickness="1"/>
+                <Ellipse x:Name="Dot" Width="10" Height="10" Fill="{StaticResource Ilu.Brush.Canvas}" Visibility="Collapsed"/>
+              </Grid>
+              <ContentPresenter Grid.Column="1" Margin="{TemplateBinding Padding}" VerticalAlignment="Center"
+                                RecognizesAccessKey="True"/>
+            </Grid>
+          </Border>
+          <ControlTemplate.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+              <Setter TargetName="Rim" Property="Stroke" Value="{StaticResource Ilu.Brush.TextMuted}"/>
+            </Trigger>
+            <Trigger Property="IsChecked" Value="True">
+              <Setter TargetName="Rim" Property="Fill" Value="{StaticResource Ilu.Brush.Text}"/>
+              <Setter TargetName="Rim" Property="Stroke" Value="{StaticResource Ilu.Brush.Text}"/>
+              <Setter TargetName="Dot" Property="Visibility" Value="Visible"/>
+            </Trigger>
+            <Trigger Property="IsEnabled" Value="False">
+              <Setter Property="Foreground" Value="{StaticResource Ilu.Brush.Disabled}"/>
+            </Trigger>
+          </ControlTemplate.Triggers>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <!-- ===== ComboBox: 32 tall input look; 28 px arrow button divided by a line-strong rule; raised list ===== -->
+  <ControlTemplate x:Key="Ilu.ComboBox.Toggle" TargetType="ToggleButton">
+    <Border x:Name="Bd" Background="Transparent" SnapsToDevicePixels="True">
+      <Grid>
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="*"/>
+          <ColumnDefinition Width="28"/>
+        </Grid.ColumnDefinitions>
+        <Border Grid.Column="1" BorderBrush="{StaticResource Ilu.Brush.LineStrong}" BorderThickness="1,0,0,0" Margin="0,4">
+          <TextBlock Text="&#xE70D;" FontFamily="{StaticResource Ilu.Font.Icon}" FontSize="10"
+                     Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ComboBox}}"
+                     HorizontalAlignment="Center" VerticalAlignment="Center"/>
+        </Border>
+      </Grid>
+    </Border>
+  </ControlTemplate>
+
+  <Style x:Key="Ilu.ComboBoxItem" TargetType="ComboBoxItem">
+    <Setter Property="FontFamily" Value="{StaticResource Ilu.Font.Ui}"/>
+    <Setter Property="FontSize" Value="14"/>
+    <Setter Property="Foreground" Value="{StaticResource Ilu.Brush.Text}"/>
+    <Setter Property="Padding" Value="10,0"/>
+    <Setter Property="MinHeight" Value="32"/>
+    <Setter Property="SnapsToDevicePixels" Value="True"/>
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="ComboBoxItem">
+          <Border x:Name="Bd" Background="Transparent" Padding="{TemplateBinding Padding}" SnapsToDevicePixels="True">
+            <ContentPresenter VerticalAlignment="Center"/>
+          </Border>
+          <ControlTemplate.Triggers>
+            <Trigger Property="IsHighlighted" Value="True">
+              <Setter TargetName="Bd" Property="Background" Value="{StaticResource Ilu.Brush.Pressed}"/>
+            </Trigger>
+            <Trigger Property="IsSelected" Value="True">
+              <Setter Property="Foreground" Value="{StaticResource Ilu.Brush.TextStrong}"/>
+            </Trigger>
+            <Trigger Property="IsEnabled" Value="False">
+              <Setter Property="Foreground" Value="{StaticResource Ilu.Brush.Disabled}"/>
+            </Trigger>
+          </ControlTemplate.Triggers>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <Style x:Key="Ilu.ComboBox" TargetType="ComboBox">
+    <Setter Property="FontFamily" Value="{StaticResource Ilu.Font.Ui}"/>
+    <Setter Property="FontSize" Value="14"/>
+    <Setter Property="Foreground" Value="{StaticResource Ilu.Brush.Text}"/>
+    <Setter Property="Background" Value="{StaticResource Ilu.Brush.Canvas}"/>
+    <Setter Property="BorderBrush" Value="{StaticResource Ilu.Brush.LineStrong}"/>
+    <Setter Property="BorderThickness" Value="1"/>
+    <Setter Property="MinHeight" Value="{StaticResource Ilu.Size.ControlInput}"/>
+    <Setter Property="Padding" Value="8,0,0,0"/>
+    <Setter Property="SnapsToDevicePixels" Value="True"/>
+    <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled"/>
+    <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Auto"/>
+    <Setter Property="ItemContainerStyle" Value="{StaticResource Ilu.ComboBoxItem}"/>
+    <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="ComboBox">
+          <Grid>
+            <Border x:Name="Bd" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                    BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="{StaticResource Ilu.Radius.Control}"
+                    SnapsToDevicePixels="True"/>
+            <ContentPresenter x:Name="Content" Margin="8,0,32,0" Content="{TemplateBinding SelectionBoxItem}"
+                              ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
+                              ContentStringFormat="{TemplateBinding SelectionBoxItemStringFormat}"
+                              VerticalAlignment="Center" HorizontalAlignment="Left" IsHitTestVisible="False"/>
+            <ToggleButton x:Name="Toggle" Template="{StaticResource Ilu.ComboBox.Toggle}" Focusable="False" ClickMode="Press"
+                          IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}"/>
+            <Popup x:Name="PART_Popup" Placement="Bottom" IsOpen="{TemplateBinding IsDropDownOpen}" AllowsTransparency="True"
+                   Focusable="False" PopupAnimation="None">
+              <Border Background="{StaticResource Ilu.Brush.Raised}" BorderBrush="{StaticResource Ilu.Brush.LineStrong}" BorderThickness="1"
+                      CornerRadius="{StaticResource Ilu.Radius.Panel}" Padding="4" MinWidth="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}"
+                      MaxHeight="360" SnapsToDevicePixels="True">
+                <ScrollViewer>
+                  <ItemsPresenter KeyboardNavigation.DirectionalNavigation="Contained"/>
+                </ScrollViewer>
+              </Border>
+            </Popup>
+          </Grid>
+          <ControlTemplate.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+              <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource Ilu.Brush.TextMuted}"/>
+            </Trigger>
+            <Trigger Property="IsKeyboardFocusWithin" Value="True">
+              <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource Ilu.Brush.Focus}"/>
+              <Setter TargetName="Bd" Property="BorderThickness" Value="2"/>
+            </Trigger>
+            <Trigger Property="IsEnabled" Value="False">
+              <Setter Property="Foreground" Value="{StaticResource Ilu.Brush.Disabled}"/>
+              <Setter TargetName="Bd" Property="Background" Value="{StaticResource Ilu.Brush.Surface}"/>
+              <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource Ilu.Brush.Line}"/>
+            </Trigger>
+          </ControlTemplate.Triggers>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+  <Style TargetType="ComboBox" BasedOn="{StaticResource Ilu.ComboBox}"/>
+
+  <!-- ===== Speed slider: horizontal track centred on zero. Tag = "Playing" paints the fill in `live`. ===== -->
+  <Style x:Key="Ilu.Slider.Thumb" TargetType="Thumb">
+    <Setter Property="Width" Value="20"/>
+    <Setter Property="Height" Value="20"/>
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="Thumb">
+          <Ellipse Fill="{StaticResource Ilu.Brush.TextStrong}" Stroke="{StaticResource Ilu.Brush.Canvas}" StrokeThickness="2"/>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <Style x:Key="Ilu.Slider.Speed" TargetType="Slider">
+    <Setter Property="Minimum" Value="-10"/>
+    <Setter Property="Maximum" Value="10"/>
+    <Setter Property="SmallChange" Value="0.5"/>
+    <Setter Property="LargeChange" Value="1"/>
+    <Setter Property="Height" Value="{StaticResource Ilu.Size.ControlSecondary}"/>
+    <Setter Property="FocusVisualStyle" Value="{StaticResource Ilu.FocusVisual.Small}"/>
+    <Setter Property="IsMoveToPointEnabled" Value="True"/>
+    <Setter Property="Focusable" Value="True"/>
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="Slider">
+          <Grid x:Name="Root" Background="Transparent" SnapsToDevicePixels="True">
+            <Border Height="8" Margin="10,0" Background="{StaticResource Ilu.Brush.Line}" CornerRadius="4"
+                    BorderBrush="{StaticResource Ilu.Brush.Idle}" BorderThickness="1"/>
+            <Border x:Name="Fill" Height="8" Background="{StaticResource Ilu.Brush.Text}" HorizontalAlignment="Stretch">
+              <Border.Margin>
+                <MultiBinding Converter="{x:Static t:CentreFillConverter.Instance}">
+                  <Binding Path="Value" RelativeSource="{RelativeSource TemplatedParent}"/>
+                  <Binding Path="Minimum" RelativeSource="{RelativeSource TemplatedParent}"/>
+                  <Binding Path="Maximum" RelativeSource="{RelativeSource TemplatedParent}"/>
+                  <Binding Path="ActualWidth" ElementName="Root"/>
+                </MultiBinding>
+              </Border.Margin>
+            </Border>
+            <Rectangle Width="1" Height="16" Fill="{StaticResource Ilu.Brush.LineStrong}" HorizontalAlignment="Center"/>
+            <Track x:Name="PART_Track" Margin="0">
+              <Track.DecreaseRepeatButton>
+                <RepeatButton Command="Slider.DecreaseLarge" Focusable="False" IsTabStop="False" Opacity="0">
+                  <RepeatButton.Template>
+                    <ControlTemplate TargetType="RepeatButton"><Border Background="Transparent"/></ControlTemplate>
+                  </RepeatButton.Template>
+                </RepeatButton>
+              </Track.DecreaseRepeatButton>
+              <Track.IncreaseRepeatButton>
+                <RepeatButton Command="Slider.IncreaseLarge" Focusable="False" IsTabStop="False" Opacity="0">
+                  <RepeatButton.Template>
+                    <ControlTemplate TargetType="RepeatButton"><Border Background="Transparent"/></ControlTemplate>
+                  </RepeatButton.Template>
+                </RepeatButton>
+              </Track.IncreaseRepeatButton>
+              <Track.Thumb>
+                <Thumb Style="{StaticResource Ilu.Slider.Thumb}"/>
+              </Track.Thumb>
+            </Track>
+          </Grid>
+          <ControlTemplate.Triggers>
+            <Trigger Property="Tag" Value="Playing">
+              <Setter TargetName="Fill" Property="Background" Value="{StaticResource Ilu.Brush.Live}"/>
+            </Trigger>
+            <Trigger Property="IsEnabled" Value="False">
+              <Setter TargetName="Fill" Property="Background" Value="{StaticResource Ilu.Brush.Disabled}"/>
+            </Trigger>
+          </ControlTemplate.Triggers>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+</ResourceDictionary>

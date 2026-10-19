@@ -1,0 +1,279 @@
+<UserControl x:Class="IluPrompter.App.Views.EditorPanel"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:t="clr-namespace:IluPrompter.Theme;assembly=IluPrompter.Theme"
+             xmlns:c="clr-namespace:IluPrompter.App.Controls"
+             xmlns:vm="clr-namespace:IluPrompter.App.ViewModels"
+             Focusable="False" IsTabStop="False">
+  <!-- DESIGN.md "Editor toolbar (E)" and "Paper (F)". DataContext: EditorToolbarViewModel. Toolbar buttons never take
+       the keyboard focus, so the caret and selection stay in the script while you format. -->
+  <UserControl.Resources>
+    <Style x:Key="PopupRow" TargetType="Button">
+      <Setter Property="FontFamily" Value="{StaticResource Ilu.Font.Ui}"/>
+      <Setter Property="FontSize" Value="14"/>
+      <Setter Property="Foreground" Value="{StaticResource Ilu.Brush.Text}"/>
+      <Setter Property="Height" Value="32"/>
+      <Setter Property="MinWidth" Value="168"/>
+      <Setter Property="Focusable" Value="False"/>
+      <Setter Property="HorizontalContentAlignment" Value="Left"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="Button">
+            <Border x:Name="Bd" Background="Transparent" Padding="8,0">
+              <ContentPresenter VerticalAlignment="Center"/>
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True">
+                <Setter TargetName="Bd" Property="Background" Value="{StaticResource Ilu.Brush.Pressed}"/>
+              </Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+
+    <Style x:Key="ToolbarDivider" TargetType="Border">
+      <Setter Property="Width" Value="1"/>
+      <Setter Property="Height" Value="20"/>
+      <Setter Property="Margin" Value="6,0"/>
+      <Setter Property="Background" Value="{StaticResource Ilu.Brush.Line}"/>
+    </Style>
+
+    <DataTemplate x:Key="ColourRow" DataType="{x:Type vm:ColourMenuItem}">
+      <StackPanel Orientation="Horizontal">
+        <Border Width="20" Height="20" Background="{Binding Swatch}" BorderBrush="{StaticResource Ilu.Brush.LineStrong}" BorderThickness="1"
+                CornerRadius="2"/>
+        <TextBlock Text="{Binding Name}" Style="{StaticResource Ilu.Text.Body}" Margin="10,0,0,0" VerticalAlignment="Center"/>
+      </StackPanel>
+    </DataTemplate>
+
+    <ControlTemplate x:Key="PopupSurface" TargetType="ContentControl">
+      <Border Background="{StaticResource Ilu.Brush.Raised}" BorderBrush="{StaticResource Ilu.Brush.LineStrong}" BorderThickness="1"
+              CornerRadius="{StaticResource Ilu.Radius.Panel}" Padding="4">
+        <ContentPresenter/>
+      </Border>
+    </ControlTemplate>
+  </UserControl.Resources>
+
+  <Border Style="{StaticResource Ilu.Panel}" Padding="0">
+    <Grid>
+      <Grid.RowDefinitions>
+        <RowDefinition Height="44"/>
+        <RowDefinition Height="*"/>
+      </Grid.RowDefinitions>
+
+      <!-- E: toolbar -->
+      <Border Background="{StaticResource Ilu.Brush.Surface}" BorderBrush="{StaticResource Ilu.Brush.Line}" BorderThickness="0,0,0,1"
+              CornerRadius="3,3,0,0">
+        <Grid Margin="8,0">
+          <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+            <!-- History -->
+            <Button Style="{StaticResource Ilu.Button.Toolbar}" Focusable="False" Click="OnUndo" IsEnabled="{Binding CanUndo}"
+                    ToolTip="Undo (Ctrl+Z)" AutomationProperties.Name="Undo" AutomationProperties.AcceleratorKey="Ctrl+Z">
+              <TextBlock Text="{x:Static t:IluIcons.Undo}" Style="{StaticResource Ilu.Text.Icon}"/>
+            </Button>
+            <Button Style="{StaticResource Ilu.Button.Toolbar}" Margin="2,0,0,0" Focusable="False" Click="OnRedo" IsEnabled="{Binding CanRedo}"
+                    ToolTip="Redo (Ctrl+Y)" AutomationProperties.Name="Redo" AutomationProperties.AcceleratorKey="Ctrl+Y">
+              <TextBlock Text="{x:Static t:IluIcons.Redo}" Style="{StaticResource Ilu.Text.Icon}"/>
+            </Button>
+            <Border Style="{StaticResource ToolbarDivider}"/>
+
+            <!-- Size -->
+            <Grid>
+              <ToggleButton x:Name="SizeToggle" Style="{StaticResource Ilu.ToggleButton.ToolbarWide}" Focusable="False" MinWidth="86"
+                            ToolTip="Text size (Ctrl+] larger, Ctrl+[ smaller)" AutomationProperties.Name="Text size"
+                            IsHitTestVisible="{Binding ElementName=SizePopup, Path=IsOpen, Converter={x:Static c:NotConverter.Instance}}">
+                <StackPanel Orientation="Horizontal">
+                  <TextBlock Text="{Binding SizeText}" Style="{StaticResource Ilu.Text.Label}" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}"/>
+                  <TextBlock Text="&#xE70D;" Style="{StaticResource Ilu.Text.Icon}" FontSize="9" Margin="8,0,0,0" VerticalAlignment="Center"/>
+                </StackPanel>
+              </ToggleButton>
+              <Popup x:Name="SizePopup" PlacementTarget="{Binding ElementName=SizeToggle}" Placement="Bottom" StaysOpen="False"
+                     IsOpen="{Binding IsChecked, ElementName=SizeToggle, Mode=TwoWay}" AllowsTransparency="True" PopupAnimation="None" Focusable="False">
+                <ContentControl Template="{StaticResource PopupSurface}">
+                  <StackPanel>
+                    <Button Style="{StaticResource PopupRow}" Content="Small" Click="OnSize" Tag="Small"/>
+                    <Button Style="{StaticResource PopupRow}" Content="Normal" Click="OnSize" Tag="Normal"/>
+                    <Button Style="{StaticResource PopupRow}" Content="Large" Click="OnSize" Tag="Large"/>
+                    <Button Style="{StaticResource PopupRow}" Content="Huge" Click="OnSize" Tag="Huge"/>
+                  </StackPanel>
+                </ContentControl>
+              </Popup>
+            </Grid>
+            <Border Style="{StaticResource ToolbarDivider}"/>
+
+            <!-- Style -->
+            <ToggleButton Style="{StaticResource Ilu.ToggleButton.Toolbar}" Focusable="False" Click="OnBold" IsChecked="{Binding IsBold, Mode=OneWay}"
+                          ToolTip="Bold (Ctrl+B)" AutomationProperties.Name="Bold" AutomationProperties.AcceleratorKey="Ctrl+B">
+              <TextBlock Text="{x:Static t:IluIcons.Bold}" Style="{StaticResource Ilu.Text.Icon}"/>
+            </ToggleButton>
+            <ToggleButton Style="{StaticResource Ilu.ToggleButton.Toolbar}" Margin="2,0,0,0" Focusable="False" Click="OnItalic" IsChecked="{Binding IsItalic, Mode=OneWay}"
+                          ToolTip="Italic (Ctrl+I)" AutomationProperties.Name="Italic" AutomationProperties.AcceleratorKey="Ctrl+I">
+              <TextBlock Text="{x:Static t:IluIcons.Italic}" Style="{StaticResource Ilu.Text.Icon}"/>
+            </ToggleButton>
+            <ToggleButton Style="{StaticResource Ilu.ToggleButton.Toolbar}" Margin="2,0,0,0" Focusable="False" Click="OnUnderline" IsChecked="{Binding IsUnderline, Mode=OneWay}"
+                          ToolTip="Underline (Ctrl+U)" AutomationProperties.Name="Underline" AutomationProperties.AcceleratorKey="Ctrl+U">
+              <TextBlock Text="{x:Static t:IluIcons.Underline}" Style="{StaticResource Ilu.Text.Icon}"/>
+            </ToggleButton>
+            <ToggleButton Style="{StaticResource Ilu.ToggleButton.Toolbar}" Margin="2,0,0,0" Focusable="False" Click="OnStrike" IsChecked="{Binding IsStrikethrough, Mode=OneWay}"
+                          ToolTip="Strikethrough (Ctrl+Shift+X)" AutomationProperties.Name="Strikethrough" AutomationProperties.AcceleratorKey="Ctrl+Shift+X">
+              <TextBlock Text="{x:Static t:IluIcons.Strikethrough}" Style="{StaticResource Ilu.Text.Icon}"/>
+            </ToggleButton>
+            <Border Style="{StaticResource ToolbarDivider}"/>
+
+            <!-- Colour: the eight inks, and the five highlights -->
+            <Grid>
+              <ToggleButton x:Name="InkToggle" Style="{StaticResource Ilu.ToggleButton.ToolbarColour}" Focusable="False" Tag="{Binding InkBar}"
+                            ToolTip="Text colour" AutomationProperties.Name="Text colour"
+                            IsHitTestVisible="{Binding ElementName=InkPopup, Path=IsOpen, Converter={x:Static c:NotConverter.Instance}}">
+                <TextBlock Text="{x:Static t:IluIcons.FontColour}" Style="{StaticResource Ilu.Text.Icon}"/>
+              </ToggleButton>
+              <Popup x:Name="InkPopup" PlacementTarget="{Binding ElementName=InkToggle}" Placement="Bottom" StaysOpen="False"
+                     IsOpen="{Binding IsChecked, ElementName=InkToggle, Mode=TwoWay}" AllowsTransparency="True" PopupAnimation="None" Focusable="False">
+                <ContentControl Template="{StaticResource PopupSurface}">
+                  <ItemsControl ItemsSource="{Binding Inks}" Focusable="False">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate DataType="{x:Type vm:ColourMenuItem}">
+                        <Button Style="{StaticResource PopupRow}" Click="OnInk" Tag="{Binding Token}" ContentTemplate="{StaticResource ColourRow}" Content="{Binding}"/>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                </ContentControl>
+              </Popup>
+            </Grid>
+            <Grid Margin="2,0,0,0">
+              <ToggleButton x:Name="HighlightToggle" Style="{StaticResource Ilu.ToggleButton.ToolbarColour}" Focusable="False" Tag="{Binding HighlightBar}"
+                            ToolTip="Highlight (Ctrl+Shift+H applies the last highlight)" AutomationProperties.Name="Highlight"
+                            IsHitTestVisible="{Binding ElementName=HighlightPopup, Path=IsOpen, Converter={x:Static c:NotConverter.Instance}}">
+                <TextBlock Text="{x:Static t:IluIcons.Highlight}" Style="{StaticResource Ilu.Text.Icon}"/>
+              </ToggleButton>
+              <Popup x:Name="HighlightPopup" PlacementTarget="{Binding ElementName=HighlightToggle}" Placement="Bottom" StaysOpen="False"
+                     IsOpen="{Binding IsChecked, ElementName=HighlightToggle, Mode=TwoWay}" AllowsTransparency="True" PopupAnimation="None" Focusable="False">
+                <ContentControl Template="{StaticResource PopupSurface}">
+                  <ItemsControl ItemsSource="{Binding Highlights}" Focusable="False">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate DataType="{x:Type vm:ColourMenuItem}">
+                        <Button Style="{StaticResource PopupRow}" Click="OnHighlight" Tag="{Binding Token}" ContentTemplate="{StaticResource ColourRow}" Content="{Binding}"/>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                </ContentControl>
+              </Popup>
+            </Grid>
+            <Border Style="{StaticResource ToolbarDivider}"/>
+
+            <!-- Clear and structure -->
+            <Button Style="{StaticResource Ilu.Button.Toolbar}" Focusable="False" Click="OnClear"
+                    ToolTip="Clear formatting (Ctrl+Space)" AutomationProperties.Name="Clear formatting" AutomationProperties.AcceleratorKey="Ctrl+Space">
+              <TextBlock Text="Tx" Style="{StaticResource Ilu.Text.Label}" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"/>
+            </Button>
+            <Border Style="{StaticResource ToolbarDivider}"/>
+            <Button Style="{StaticResource Ilu.Button.Toolbar}" Focusable="False" Click="OnInsertSection" Width="40"
+                    ToolTip="Insert section marker (Ctrl+Shift+Enter)" AutomationProperties.Name="Insert section marker" AutomationProperties.AcceleratorKey="Ctrl+Shift+Enter">
+              <TextBlock Text="&#x00A7;+" Style="{StaticResource Ilu.Text.Label}" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"/>
+            </Button>
+          </StackPanel>
+
+          <!-- Right side: Find and zoom (folded into the overflow menu below Wide) -->
+          <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+            <StackPanel Orientation="Horizontal" Visibility="{Binding IsWide, Converter={x:Static c:BoolToVisibilityConverter.Instance}}">
+              <Button Style="{StaticResource Ilu.Button.Toolbar}" Focusable="False" Click="OnFind"
+                      ToolTip="Find (Ctrl+F)" AutomationProperties.Name="Find" AutomationProperties.AcceleratorKey="Ctrl+F">
+                <TextBlock Text="{x:Static t:IluIcons.Find}" Style="{StaticResource Ilu.Text.Icon}"/>
+              </Button>
+              <Grid Margin="2,0,0,0">
+                <ToggleButton x:Name="ZoomToggle" Style="{StaticResource Ilu.ToggleButton.ToolbarWide}" Focusable="False" MinWidth="76"
+                              ToolTip="Editor zoom (Ctrl+= and Ctrl+&#x2212;). The output is unaffected." AutomationProperties.Name="Editor zoom"
+                              IsHitTestVisible="{Binding ElementName=ZoomPopup, Path=IsOpen, Converter={x:Static c:NotConverter.Instance}}">
+                  <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="{Binding ZoomText}" Style="{StaticResource Ilu.Text.Mono}" FontSize="13"/>
+                    <TextBlock Text="&#xE70D;" Style="{StaticResource Ilu.Text.Icon}" FontSize="9" Margin="8,0,0,0" VerticalAlignment="Center"/>
+                  </StackPanel>
+                </ToggleButton>
+                <Popup x:Name="ZoomPopup" PlacementTarget="{Binding ElementName=ZoomToggle}" Placement="Bottom" StaysOpen="False"
+                       IsOpen="{Binding IsChecked, ElementName=ZoomToggle, Mode=TwoWay}" AllowsTransparency="True" PopupAnimation="None" Focusable="False">
+                  <ContentControl Template="{StaticResource PopupSurface}">
+                    <ItemsControl ItemsSource="{Binding Zooms}" Focusable="False">
+                      <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                          <Button Style="{StaticResource PopupRow}" MinWidth="90" Click="OnZoom" Tag="{Binding}">
+                            <TextBlock Text="{Binding StringFormat={}{0} %}" Style="{StaticResource Ilu.Text.Mono}"/>
+                          </Button>
+                        </DataTemplate>
+                      </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                  </ContentControl>
+                </Popup>
+              </Grid>
+            </StackPanel>
+            <Button x:Name="OverflowButton" Style="{StaticResource Ilu.Button.Toolbar}" Focusable="False" Click="OnOverflow"
+                    ToolTip="Find and zoom" AutomationProperties.Name="More"
+                    Visibility="{Binding IsWide, Converter={x:Static c:BoolToVisibilityConverter.Instance}, ConverterParameter=invert}">
+              <TextBlock Text="{x:Static t:IluIcons.More}" Style="{StaticResource Ilu.Text.Icon}"/>
+              <Button.ContextMenu>
+                <ContextMenu x:Name="OverflowMenu">
+                  <MenuItem Header="Find" InputGestureText="Ctrl+F" Click="OnFind"/>
+                  <Separator/>
+                  <MenuItem Header="Zoom in" InputGestureText="Ctrl+=" Click="OnZoomIn"/>
+                  <MenuItem Header="Zoom out" InputGestureText="Ctrl+&#x2212;" Click="OnZoomOut"/>
+                  <MenuItem Header="Zoom to 100 %" Click="OnZoomReset"/>
+                </ContextMenu>
+              </Button.ContextMenu>
+            </Button>
+          </StackPanel>
+        </Grid>
+      </Border>
+
+      <!-- F: the paper. script-paper, 24 px padding, the script in its own output face -->
+      <Grid Grid.Row="1" Background="{StaticResource Ilu.Brush.ScriptPaper}" ClipToBounds="True">
+        <Grid x:Name="ZoomHost">
+          <Grid.LayoutTransform>
+            <ScaleTransform x:Name="Zoom" ScaleX="1" ScaleY="1"/>
+          </Grid.LayoutTransform>
+          <!-- reading-line band (behind the text) and the gutter marker -->
+          <Canvas IsHitTestVisible="False">
+            <Border x:Name="Band" Background="{StaticResource Ilu.Brush.Raised}" Visibility="Collapsed"/>
+            <TextBlock x:Name="GutterMark" Text="&#x25B6;" Style="{StaticResource Ilu.Text.Glyph}" FontSize="12"
+                       Foreground="{StaticResource Ilu.Brush.ReadingMarker}" Visibility="Collapsed"/>
+          </Canvas>
+          <RichTextBox x:Name="Editor" Style="{StaticResource Ilu.RichTextBox.Paper}" Margin="24,24,12,24"
+                       AutomationProperties.Name="Script" SpellCheck.IsEnabled="False"/>
+          <!-- double-click in the gutter: Jump the prompt here -->
+          <Border x:Name="Gutter" Width="24" HorizontalAlignment="Left" Background="Transparent" Cursor="Arrow"
+                  ToolTip="Double-click to jump the prompt here" MouseLeftButtonDown="OnGutterMouseDown"/>
+        </Grid>
+
+        <!-- LIVE: a 2 px live bar on the left edge and a caption -->
+        <Border Width="2" HorizontalAlignment="Left" Background="{StaticResource Ilu.Brush.Live}" IsHitTestVisible="False"
+                Visibility="{Binding IsLive, Converter={x:Static c:BoolToVisibilityConverter.Instance}}"/>
+        <Border HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="8,0,0,6" Padding="8,2" IsHitTestVisible="False"
+                Background="{StaticResource Ilu.Brush.Backdrop}" CornerRadius="{StaticResource Ilu.Radius.Chip}"
+                Visibility="{Binding IsLive, Converter={x:Static c:BoolToVisibilityConverter.Instance}}">
+          <TextBlock Text="{Binding LiveCaption}" Style="{StaticResource Ilu.Text.Caption}"/>
+        </Border>
+
+        <!-- Find bar -->
+        <Border x:Name="FindBar" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,8,20,0" Padding="8"
+                Background="{StaticResource Ilu.Brush.Raised}" BorderBrush="{StaticResource Ilu.Brush.LineStrong}" BorderThickness="1"
+                CornerRadius="{StaticResource Ilu.Radius.Panel}"
+                Visibility="{Binding IsFindOpen, Converter={x:Static c:BoolToVisibilityConverter.Instance}}"
+                IsVisibleChanged="OnFindVisibleChanged">
+          <StackPanel Orientation="Horizontal">
+            <TextBox x:Name="FindBox" Width="200" Text="{Binding FindText, UpdateSourceTrigger=PropertyChanged}" PreviewKeyDown="OnFindKeyDown"
+                     AutomationProperties.Name="Find text"/>
+            <Button Style="{StaticResource Ilu.Button.Toolbar}" Margin="8,0,0,0" Click="OnFindPrevious" ToolTip="Previous match (Shift+F3)" AutomationProperties.Name="Previous match">
+              <TextBlock Text="&#xE70E;" Style="{StaticResource Ilu.Text.Icon}"/>
+            </Button>
+            <Button Style="{StaticResource Ilu.Button.Toolbar}" Margin="2,0,0,0" Click="OnFindNext" ToolTip="Next match (F3)" AutomationProperties.Name="Next match">
+              <TextBlock Text="&#xE70D;" Style="{StaticResource Ilu.Text.Icon}"/>
+            </Button>
+            <TextBlock Text="{Binding FindStatus}" Style="{StaticResource Ilu.Text.Caption}" Margin="8,0,0,0" VerticalAlignment="Center" MinWidth="0"/>
+            <Button Style="{StaticResource Ilu.Button.Toolbar}" Margin="8,0,0,0" Click="OnFindClose" ToolTip="Close find (Esc)" AutomationProperties.Name="Close find">
+              <TextBlock Text="&#xE711;" Style="{StaticResource Ilu.Text.Icon}"/>
+            </Button>
+          </StackPanel>
+        </Border>
+      </Grid>
+    </Grid>
+  </Border>
+</UserControl>
