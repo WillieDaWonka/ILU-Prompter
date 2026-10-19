@@ -152,6 +152,24 @@ public class ThemeTokenTests
     }
 
     [WpfFact]
+    public void BundledPoppins_GroupsItsWeights_EachWeightResolvesToItsOwnFile_S6()
+    {
+        // Phase-0 S6: "#Poppins" must group Regular / Medium / SemiBold, so FontWeight picks the real file (no simulation).
+        var expected = new Dictionary<int, string> { [400] = "Poppins-Regular.ttf", [500] = "Poppins-Medium.ttf", [600] = "Poppins-SemiBold.ttf" };
+        foreach (var (weight, file) in expected)
+        {
+            var typeface = new Typeface(ThemeResources.UiFont, FontStyles.Normal, FontWeight.FromOpenTypeWeight(weight), FontStretches.Normal);
+            Assert.True(typeface.TryGetGlyphTypeface(out var glyphs));
+            Assert.EndsWith(file, glyphs.FontUri.ToString(), StringComparison.OrdinalIgnoreCase);
+            Assert.Equal(StyleSimulations.None, glyphs.StyleSimulations);
+        }
+
+        // The script face "Poppins" is the same bundled family; the diagnostics describe every weight.
+        Assert.Same(ThemeResources.UiFont, ThemeResources.ScriptFont("Poppins"));
+        Assert.Equal(4, IluPrompter.App.Services.FontDiagnostics.Describe("UI font", ThemeResources.UiFont).Count);
+    }
+
+    [WpfFact]
     public void ScriptColourMenus_UseTokens_ThatExist()
     {
         foreach (var ink in ThemeResources.Inks) Assert.True(ThemeResources.TryGetColor(ink.Token, out _), ink.Token);

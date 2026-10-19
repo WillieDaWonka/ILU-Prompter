@@ -56,6 +56,7 @@ public partial class App : Application
             // (directly or through another service) before settings are loaded. Only IAppLog has been resolved so far.
             // 1. settings  2. output thread  3. main window (+ input bridge + preview)  4. input router  5. open the last script
             _services.GetRequiredService<ISettingsService>().Load();
+            FontDiagnostics.Log(log, _services.GetRequiredService<ISettingsService>().Current);   // S6, --diag only
             await _services.GetRequiredService<IOutputSurface>().InitializeAsync();
 
             var main = _services.GetRequiredService<MainWindow>();
