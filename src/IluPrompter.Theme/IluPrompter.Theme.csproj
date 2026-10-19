@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <UseWPF>true</UseWPF>
+    <RootNamespace>IluPrompter.Theme</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- Fonts and logo live once, at the repo root, and are linked in as WPF Resources.
+         Any TTF dropped into assets/fonts (e.g. Poppins-Bold.ttf, Poppins-Italic.ttf) is picked up with no edit here. -->
+    <Resource Include="..\..\assets\fonts\*.ttf" Link="Fonts\%(Filename)%(Extension)" />
+    <Resource Include="..\..\assets\branding\wall-logo.png" Link="Images\wall-logo.png" />
+    <None Include="..\..\assets\fonts\OFL-*.txt" Link="Licences\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="IluPrompter.App.Tests" />
+  </ItemGroup>
+</Project>

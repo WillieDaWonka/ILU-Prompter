@@ -1,0 +1,23 @@
+<Window x:Class="IluPrompter.App.Views.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:r="clr-namespace:IluPrompter.Rendering;assembly=IluPrompter.Rendering"
+        Title="ILU Prompter"
+        MinWidth="1024" MinHeight="600" Width="1280" Height="800"
+        WindowState="Maximized"
+        Background="{StaticResource Ilu.Brush.Canvas}"
+        Foreground="{StaticResource Ilu.Brush.Text}"
+        FontFamily="{StaticResource Ilu.Font.Ui}">
+  <!-- SCAFFOLD placeholder layout: stream D replaces with DESIGN.md regions A..G. -->
+  <Grid Margin="{StaticResource Ilu.Pad.Window}">
+    <Grid.ColumnDefinitions>
+      <ColumnDefinition Width="240" />
+      <ColumnDefinition Width="*" />
+      <ColumnDefinition Width="720" />
+    </Grid.ColumnDefinitions>
+    <Border Grid.Column="0" Background="{StaticResource Ilu.Brush.Surface}" Margin="0,0,8,0" />
+    <RichTextBox x:Name="Editor" Grid.Column="1" Background="{StaticResource Ilu.Brush.ScriptPaper}"
+                 Foreground="{StaticResource Ilu.Brush.ScriptInk}" FontSize="20" Margin="0,0,8,0" />
+    <r:PrompterPreview x:Name="Preview" Grid.Column="2" Height="392" VerticalAlignment="Top" />
+  </Grid>
+</Window>

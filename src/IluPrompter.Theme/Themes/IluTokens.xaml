@@ -1,0 +1,149 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:sys="clr-namespace:System;assembly=mscorlib">
+  <!-- GENERATED from DESIGN.md front matter. The ONLY file allowed to contain colour hex literals. -->
+  <!-- Colours -->
+  <Color x:Key="Ilu.Color.Backdrop">#0B0D12</Color>
+  <SolidColorBrush x:Key="Ilu.Brush.Backdrop" Color="{StaticResource Ilu.Color.Backdrop}"/>
+  <Color x:Key="Ilu.Color.Canvas">#111217</Color>
+  <SolidColorBrush x:Key="Ilu.Brush.Canvas" Color="{StaticResource Ilu.Color.Canvas}"/>
+  <Color x:Key="Ilu.Color.Surface">#181B1F</Color>
+  <SolidColorBrush x:Key="Ilu.Brush.Surface" Color="{StaticResource Ilu.Color.Surface}"/>
+  <Color x:Key="Ilu.Color.Raised">#22252B</Color>
+  <SolidColorBrush x:Key="Ilu.Brush.Raised" Color="{StaticResource Ilu.Color.Raised}"/>
+  <Color x:Key="Ilu.Color.Pressed">#2C3038</Color>
+  <SolidColorBrush x:Key="Ilu.Brush.Pressed" Color="{StaticResource Ilu.Color.Pressed}"/>
+  <Color x:Key="Ilu.Color.Line">#262A31</Color>
+  <SolidColorBrush x:Key="Ilu.Brush.Line" Color="{StaticResource Ilu.Color.Line}"/>
+  <Color x:Key="Ilu.Color.LineStrong">#6A707C</Color>
+  <SolidColorBrush x:Key="Ilu.Brush.LineStrong" Color="{StaticResource Ilu.Color.LineStrong}"/>
+  <Color x:Key="Ilu.Color.Selection">#2B4A80</Color>
+  <SolidColorBrush x:Key="Ilu.Brush.Selection" Color="{StaticResource Ilu.Color.Selection}"/>
+  <Color x:Key="Ilu.Color.Text">#CCCCDC</Color>
+  <SolidColorBrush x:Key="Ilu.Brush.Text" Color="{StaticResource Ilu.Color.Text}"/>
+  <Color x:Key="Ilu.Color.TextMuted">#8F8F9C</Color>
+  <SolidColorBrush x:Key="Ilu.Brush.TextMuted" Color="{StaticResource Ilu.Color.TextMuted}"/>
+  <Color x:Key="Ilu.Color.TextStrong">#ECECF4</Color>
+  <SolidColorBrush x:Key="Ilu.Brush.TextStrong" Color="{StaticResource Ilu.Color.TextStrong}"/>
+  <Color x:Key="Ilu.Color.Disabled">#5A5E68</Color>
+  <SolidColorBrush x:Key="Ilu.Brush.Disabled" Color="{StaticResource Ilu.Color.Disabled}"/>
+  <Color x:Key="Ilu.Color.Ok">#596C67</Color>
+  <SolidColorBrush x:Key="Ilu.Brush.Ok" Color="{StaticResource Ilu.Color.Ok}"/>
+  <Color x:Key="Ilu.Color.OnOk">#FFFFFF</Color>
+  <SolidColorBrush x:Key="Ilu.Brush.OnOk" Color="{StaticResource Ilu.Color.OnOk}"/>
+  <Color x:Key="Ilu.Color.Live">#3EE0A4</Color>
+  <SolidColorBrush x:Key="Ilu.Brush.Live" Color="{StaticResource Ilu.Color.Live}"/>
+  <Color x:Key="Ilu.Color.OnLive">#111217</Color>
+  <SolidColorBrush x:Key="Ilu.Brush.OnLive" Color="{StaticResource Ilu.Color.OnLive}"/>
+  <Color x:Key="Ilu.Color.Idle">#3D434D</Color>
+  <SolidColorBrush x:Key="Ilu.Brush.Idle" Color="{StaticResource Ilu.Color.Idle}"/>
+  <Color x:Key="Ilu.Color.OnIdle">#FFFFFF</Color>
+  <SolidColorBrush x:Key="Ilu.Brush.OnIdle" Color="{StaticResource Ilu.Color.OnIdle}"/>
+  <Color x:Key="Ilu.Color.Active">#0072B2</Color>
+  <SolidColorBrush x:Key="Ilu.Brush.Active" Color="{StaticResource Ilu.Color.Active}"/>
+  <Color x:Key="Ilu.Color.OnActive">#FFFFFF</Color>
+  <SolidColorBrush x:Key="Ilu.Brush.OnActive" Color="{StaticResource Ilu.Color.OnActive}"/>
+  <Color x:Key="Ilu.Color.Attention">#D9981F</Color>
+  <SolidColorBrush x:Key="Ilu.Brush.Attention" Color="{StaticResource Ilu.Color.Attention}"/>
+  <Color x:Key="Ilu.Color.OnAttention">#111217</Color>
+  <SolidColorBrush x:Key="Ilu.Brush.OnAttention" Color="{StaticResource Ilu.Color.OnAttention}"/>
+  <Color x:Key="Ilu.Color.Fault">#D63A2F</Color>
+  <SolidColorBrush x:Key="Ilu.Brush.Fault" Color="{StaticResource Ilu.Color.Fault}"/>
+  <Color x:Key="Ilu.Color.OnFault">#FFFFFF</Color>
+  <SolidColorBrush x:Key="Ilu.Brush.OnFault" Color="{StaticResource Ilu.Color.OnFault}"/>
+  <Color x:Key="Ilu.Color.Action">#1F60C4</Color>
+  <SolidColorBrush x:Key="Ilu.Brush.Action" Color="{StaticResource Ilu.Color.Action}"/>
+  <Color x:Key="Ilu.Color.ActionPressed">#3274D9</Color>
+  <SolidColorBrush x:Key="Ilu.Brush.ActionPressed" Color="{StaticResource Ilu.Color.ActionPressed}"/>
+  <Color x:Key="Ilu.Color.OnAction">#FFFFFF</Color>
+  <SolidColorBrush x:Key="Ilu.Brush.OnAction" Color="{StaticResource Ilu.Color.OnAction}"/>
+  <Color x:Key="Ilu.Color.Focus">#5794F2</Color>
+  <SolidColorBrush x:Key="Ilu.Brush.Focus" Color="{StaticResource Ilu.Color.Focus}"/>
+  <Color x:Key="Ilu.Color.MarginOverlay">#1F3274D9</Color>
+  <SolidColorBrush x:Key="Ilu.Brush.MarginOverlay" Color="{StaticResource Ilu.Color.MarginOverlay}"/>
+  <Color x:Key="Ilu.Color.ScriptPaper">#000000</Color>
+  <SolidColorBrush x:Key="Ilu.Brush.ScriptPaper" Color="{StaticResource Ilu.Color.ScriptPaper}"/>
+  <Color x:Key="Ilu.Color.ScriptInk">#F2F2F2</Color>
+  <SolidColorBrush x:Key="Ilu.Brush.ScriptInk" Color="{StaticResource Ilu.Color.ScriptInk}"/>
+  <Color x:Key="Ilu.Color.ReadingMarker">#8F8F9C</Color>
+  <SolidColorBrush x:Key="Ilu.Brush.ReadingMarker" Color="{StaticResource Ilu.Color.ReadingMarker}"/>
+  <Color x:Key="Ilu.Color.EndMarker">#8F8F9C</Color>
+  <SolidColorBrush x:Key="Ilu.Brush.EndMarker" Color="{StaticResource Ilu.Color.EndMarker}"/>
+  <Color x:Key="Ilu.Color.InkWhite">#F2F2F2</Color>
+  <SolidColorBrush x:Key="Ilu.Brush.InkWhite" Color="{StaticResource Ilu.Color.InkWhite}"/>
+  <Color x:Key="Ilu.Color.InkYellow">#FFE45C</Color>
+  <SolidColorBrush x:Key="Ilu.Brush.InkYellow" Color="{StaticResource Ilu.Color.InkYellow}"/>
+  <Color x:Key="Ilu.Color.InkAmber">#FFB547</Color>
+  <SolidColorBrush x:Key="Ilu.Brush.InkAmber" Color="{StaticResource Ilu.Color.InkAmber}"/>
+  <Color x:Key="Ilu.Color.InkGreen">#3EE0A4</Color>
+  <SolidColorBrush x:Key="Ilu.Brush.InkGreen" Color="{StaticResource Ilu.Color.InkGreen}"/>
+  <Color x:Key="Ilu.Color.InkCyan">#6FD6FF</Color>
+  <SolidColorBrush x:Key="Ilu.Brush.InkCyan" Color="{StaticResource Ilu.Color.InkCyan}"/>
+  <Color x:Key="Ilu.Color.InkPink">#FF8FB8</Color>
+  <SolidColorBrush x:Key="Ilu.Brush.InkPink" Color="{StaticResource Ilu.Color.InkPink}"/>
+  <Color x:Key="Ilu.Color.InkRed">#FF6B6B</Color>
+  <SolidColorBrush x:Key="Ilu.Brush.InkRed" Color="{StaticResource Ilu.Color.InkRed}"/>
+  <Color x:Key="Ilu.Color.InkGrey">#8F8F9C</Color>
+  <SolidColorBrush x:Key="Ilu.Brush.InkGrey" Color="{StaticResource Ilu.Color.InkGrey}"/>
+  <Color x:Key="Ilu.Color.HighlightYellow">#FFE45C</Color>
+  <SolidColorBrush x:Key="Ilu.Brush.HighlightYellow" Color="{StaticResource Ilu.Color.HighlightYellow}"/>
+  <Color x:Key="Ilu.Color.HighlightBlue">#1F4FA0</Color>
+  <SolidColorBrush x:Key="Ilu.Brush.HighlightBlue" Color="{StaticResource Ilu.Color.HighlightBlue}"/>
+  <Color x:Key="Ilu.Color.HighlightGreen">#1E6B50</Color>
+  <SolidColorBrush x:Key="Ilu.Brush.HighlightGreen" Color="{StaticResource Ilu.Color.HighlightGreen}"/>
+  <Color x:Key="Ilu.Color.HighlightMagenta">#7A2160</Color>
+  <SolidColorBrush x:Key="Ilu.Brush.HighlightMagenta" Color="{StaticResource Ilu.Color.HighlightMagenta}"/>
+  <Color x:Key="Ilu.Color.HighlightGrey">#3D434D</Color>
+  <SolidColorBrush x:Key="Ilu.Brush.HighlightGrey" Color="{StaticResource Ilu.Color.HighlightGrey}"/>
+  <!-- Fonts (Poppins / DM Mono bundled in IluPrompter.Theme as Resource; add Poppins-Bold/Italic TTFs to assets/fonts and they are picked up) -->
+  <FontFamily x:Key="Ilu.Font.Ui">pack://application:,,,/IluPrompter.Theme;component/Fonts/#Poppins, Segoe UI</FontFamily>
+  <FontFamily x:Key="Ilu.Font.Mono">pack://application:,,,/IluPrompter.Theme;component/Fonts/#DM Mono, Cascadia Mono, Consolas</FontFamily>
+  <FontFamily x:Key="Ilu.Font.Icon">Segoe Fluent Icons, Segoe MDL2 Assets</FontFamily>
+  <!-- Sizes (DIP) -->
+  <sys:Double x:Key="Ilu.Size.S1">4</sys:Double>
+  <sys:Double x:Key="Ilu.Size.S2">8</sys:Double>
+  <sys:Double x:Key="Ilu.Size.S3">12</sys:Double>
+  <sys:Double x:Key="Ilu.Size.S4">16</sys:Double>
+  <sys:Double x:Key="Ilu.Size.S5">24</sys:Double>
+  <sys:Double x:Key="Ilu.Size.S6">32</sys:Double>
+  <sys:Double x:Key="Ilu.Size.RegionGap">8</sys:Double>
+  <sys:Double x:Key="Ilu.Size.WindowPad">8</sys:Double>
+  <sys:Double x:Key="Ilu.Size.PanelPad">12</sys:Double>
+  <sys:Double x:Key="Ilu.Size.PanelTitleBar">36</sys:Double>
+  <sys:Double x:Key="Ilu.Size.AppBar">44</sys:Double>
+  <sys:Double x:Key="Ilu.Size.StatusBar">28</sys:Double>
+  <sys:Double x:Key="Ilu.Size.ControlPrimary">52</sys:Double>
+  <sys:Double x:Key="Ilu.Size.ControlSecondary">44</sys:Double>
+  <sys:Double x:Key="Ilu.Size.ControlInput">32</sys:Double>
+  <sys:Double x:Key="Ilu.Size.ControlToolbar">32</sys:Double>
+  <sys:Double x:Key="Ilu.Size.Segmented">36</sys:Double>
+  <sys:Double x:Key="Ilu.Size.Chip">28</sys:Double>
+  <sys:Double x:Key="Ilu.Size.ListRow">32</sys:Double>
+  <sys:Double x:Key="Ilu.Size.TargetGap">8</sys:Double>
+  <sys:Double x:Key="Ilu.Size.PlayGap">12</sys:Double>
+  <sys:Double x:Key="Ilu.Size.SectionsWidth">240</sys:Double>
+  <sys:Double x:Key="Ilu.Size.LiveColumnWide">720</sys:Double>
+  <sys:Double x:Key="Ilu.Size.LiveColumnCompact">480</sys:Double>
+  <sys:Double x:Key="Ilu.Size.LiveColumnNarrow">440</sys:Double>
+  <sys:Double x:Key="Ilu.Size.EditorPaperPad">24</sys:Double>
+  <sys:Double x:Key="Ilu.Size.MinWindowWidth">1024</sys:Double>
+  <sys:Double x:Key="Ilu.Size.MinWindowHeight">600</sys:Double>
+  <!-- Radii -->
+  <CornerRadius x:Key="Ilu.Radius.None">0</CornerRadius>
+  <CornerRadius x:Key="Ilu.Radius.Chip">2</CornerRadius>
+  <CornerRadius x:Key="Ilu.Radius.Panel">3</CornerRadius>
+  <CornerRadius x:Key="Ilu.Radius.Control">4</CornerRadius>
+  <CornerRadius x:Key="Ilu.Radius.Button">6</CornerRadius>
+  <!-- Padding -->
+  <Thickness x:Key="Ilu.Pad.Panel">12</Thickness>
+  <Thickness x:Key="Ilu.Pad.Window">8</Thickness>
+  <Thickness x:Key="Ilu.Pad.EditorPaper">24</Thickness>
+  <!-- Motion (DESIGN.md Motion table) -->
+  <Duration x:Key="Ilu.Motion.Ui">0:0:0</Duration>
+  <Duration x:Key="Ilu.Motion.RampStart">0:0:0.400</Duration>
+  <Duration x:Key="Ilu.Motion.RampStop">0:0:0.200</Duration>
+  <Duration x:Key="Ilu.Motion.RampChange">0:0:0.300</Duration>
+  <Duration x:Key="Ilu.Motion.LineStep">0:0:0.220</Duration>
+  <Duration x:Key="Ilu.Motion.ParagraphStep">0:0:0.320</Duration>
+  <Duration x:Key="Ilu.Motion.Jump">0:0:0</Duration>
+</ResourceDictionary>

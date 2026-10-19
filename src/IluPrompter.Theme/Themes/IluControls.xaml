@@ -1,0 +1,8 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <ResourceDictionary.MergedDictionaries>
+    <ResourceDictionary Source="/IluPrompter.Theme;component/Themes/IluTokens.xaml"/>
+  </ResourceDictionary.MergedDictionaries>
+  <!-- Stream D: Ilu.Text.* TextBlock styles and every control template (buttons, chips, segmented, inputs,
+       menus, tooltips, scroll bars, check boxes) per DESIGN.md. No hex literals here: use Ilu.Color/Ilu.Brush keys. -->
+</ResourceDictionary>
