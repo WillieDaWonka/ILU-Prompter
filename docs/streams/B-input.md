@@ -7,7 +7,7 @@ Branch: `worktree-agent-ae2905c299e5a6360` (stream B). Contract: `docs/ARCHITECT
 | Piece | State |
 |---|---|
 | `AppInputBridge` (keys + preview wheel/buttons) | done, unit-tested (pure helpers + STA event raising, no devices) |
-| `RawMouseWheelProvider` | pending |
+| `RawMouseWheelProvider` | done, unit-tested helpers only; NOT run on hardware |
 | `XInputProvider` | pending |
 | `ContourShuttleProvider` | pending |
 
@@ -24,6 +24,16 @@ Branch: `worktree-agent-ae2905c299e5a6360` (stream B). Contract: `docs/ARCHITECT
   `app:text`, else `app`.
 - **Wheel.** `Delta / 120.0`, never rounded (test raises a real `MouseWheelEventArgs` of 30 and sees 0.25).
   Only Middle / XButton1 / XButton2 are forwarded; Left/Right are left to WPF.
+
+- **Raw Input mouse.** `RawMouseWheelProvider` registers usage page 1 / usage 2 only, flags `InputSink | DevNotify`,
+  on a message-only `HwndSource` (thread "ILU RawInput"). Per record it reads the small header first
+  (`User32.GetRawInputDataHeader`) and drops other devices' records before parsing (`GetRawInputMouseData`),
+  instead of `RawInputData.FromHandle`, which also resolves the device (name lookup) for every mouse move.
+  `deviceId` null/blank means "no dedicated mouse": it does not start and reports `NotFound` with the detail
+  "Choose the prompter mouse in Settings" (a "first available mouse" would be the operator's own mouse and would
+  scroll the prompter from any window). Horizontal wheel is ignored; only Middle/XButton1/XButton2 edges are sent.
+  Fallback for Phase-0 S4b (no `WM_INPUT` unfocused): set env `ILU_RAWINPUT_TOOLWINDOW=1` to use a zero-size,
+  never-shown top-level tool window instead of the message-only window; no code change needed.
 
 ## How to test
 
