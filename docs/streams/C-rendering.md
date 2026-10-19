@@ -164,6 +164,17 @@ styles, not activated, DPI compensation), so they are opt-in. They pass on this 
    panels (and different refresh rates) may behave differently; run with `--diag` and read `frames:output` / `frames:preview`.
 5. S8 (display stays awake while playing) was not run.
 
+## Integration changes (19 Oct 2026, see INTEGRATION.md)
+
+- The CONTRACT-REQUEST above is applied (ARCHITECTURE §3 rules 5, 10, 11 and §4.C).
+- The −13.4 DIP figure is the raw glyph rectangle; E's builder already returns line boxes. `IntegratedSurfaceTests`
+  (real surface + factory + builder) prove line tops start at 0, a jog puts the line's ink on the reading line, and two
+  UI threads give identical tables (S7).
+- A click on the preview takes keyboard focus (keys go to the transport).
+- `FrameStats.Record(timestamp, moving)`: only intervals touching a moving frame count, so pauses and the preview's
+  250 ms heartbeats no longer read as slow frames.
+- The `--dev-output-on-primary` window is topmost.
+
 ## Known gaps
 
 - D2D/DirectWrite output (`IOutputRenderer`) is a seam only.
