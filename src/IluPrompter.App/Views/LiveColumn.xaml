@@ -1,0 +1,276 @@
+<UserControl x:Class="IluPrompter.App.Views.LiveColumn"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:core="clr-namespace:IluPrompter.Core;assembly=IluPrompter.Core"
+             xmlns:r="clr-namespace:IluPrompter.Rendering;assembly=IluPrompter.Rendering"
+             xmlns:t="clr-namespace:IluPrompter.Theme;assembly=IluPrompter.Theme"
+             xmlns:c="clr-namespace:IluPrompter.App.Controls"
+             xmlns:v="clr-namespace:IluPrompter.App.Views"
+             Focusable="False" IsTabStop="False">
+  <!-- DESIGN.md "Live column" D1 to D7. DataContext: LiveViewModel. The live column never scrolls. -->
+  <UserControl.Resources>
+    <!-- a caption that takes no room while it has nothing to say -->
+    <Style x:Key="CaptionOrNothing" TargetType="TextBlock" BasedOn="{StaticResource Ilu.Text.Caption}">
+      <Style.Triggers>
+        <Trigger Property="Text" Value="">
+          <Setter Property="Visibility" Value="Collapsed"/>
+        </Trigger>
+      </Style.Triggers>
+    </Style>
+    <Style x:Key="TransportCaption" TargetType="TextBlock" BasedOn="{StaticResource Ilu.Text.Caption}">
+      <Setter Property="HorizontalAlignment" Value="Center"/>
+      <Setter Property="Margin" Value="0,2,0,0"/>
+    </Style>
+  </UserControl.Resources>
+
+  <Border Style="{StaticResource Ilu.Panel}" Padding="{Binding ColumnPadding}">
+    <Grid>
+      <Grid.RowDefinitions>
+        <RowDefinition Height="Auto"/>   <!-- D1 chips -->
+        <RowDefinition Height="Auto"/>   <!-- D2 preview -->
+        <RowDefinition Height="Auto"/>   <!-- D3 transport -->
+        <RowDefinition Height="Auto"/>   <!-- D4 speed -->
+        <RowDefinition Height="Auto"/>   <!-- D5 mode and blank -->
+        <RowDefinition Height="Auto"/>   <!-- D6 readouts -->
+        <RowDefinition Height="*"/>      <!-- D7 output layout -->
+      </Grid.RowDefinitions>
+
+      <!-- D1: chips (at Narrow they live in the app bar instead) -->
+      <v:ChipsRow Margin="0,0,0,8" HorizontalAlignment="Left"
+                  Visibility="{Binding ChipsInLiveColumn, Converter={x:Static c:BoolToVisibilityConverter.Instance}}"/>
+
+      <!-- D2: preview, framed 1 px line-strong, 2 px live while LIVE -->
+      <StackPanel Grid.Row="1" Margin="0,0,0,8">
+        <c:AspectRatioDecorator Aspect="{Binding PreviewAspect}">
+          <Border x:Name="Frame" Background="{StaticResource Ilu.Brush.Backdrop}" BorderBrush="{StaticResource Ilu.Brush.LineStrong}" BorderThickness="1">
+            <Border.Style>
+              <Style TargetType="Border">
+                <Style.Triggers>
+                  <DataTrigger Binding="{Binding IsLive}" Value="True">
+                    <Setter Property="BorderBrush" Value="{StaticResource Ilu.Brush.Live}"/>
+                    <Setter Property="BorderThickness" Value="2"/>
+                  </DataTrigger>
+                </Style.Triggers>
+              </Style>
+            </Border.Style>
+            <Grid ClipToBounds="True">
+              <r:PrompterPreview x:Name="Preview" AutomationProperties.Name="Live preview of the output"
+                                 FocusVisualStyle="{x:Null}"/>
+              <Border HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,6" Padding="8,2"
+                      Background="{StaticResource Ilu.Brush.Backdrop}" CornerRadius="{StaticResource Ilu.Radius.Chip}" IsHitTestVisible="False">
+                <TextBlock Text="Wheel drives the prompt here" Style="{StaticResource Ilu.Text.Caption}"/>
+                <Border.Style>
+                  <Style TargetType="Border">
+                    <Setter Property="Visibility" Value="Collapsed"/>
+                    <Style.Triggers>
+                      <MultiDataTrigger>
+                        <MultiDataTrigger.Conditions>
+                          <Condition Binding="{Binding IsPointerOverScript, ElementName=Preview}" Value="True"/>
+                          <Condition Binding="{Binding WheelHintApplies}" Value="True"/>
+                        </MultiDataTrigger.Conditions>
+                        <Setter Property="Visibility" Value="Visible"/>
+                      </MultiDataTrigger>
+                    </Style.Triggers>
+                  </Style>
+                </Border.Style>
+              </Border>
+            </Grid>
+          </Border>
+        </c:AspectRatioDecorator>
+        <Grid Margin="0,4,0,0" Height="20">
+          <TextBlock Text="{Binding PreviewCaption}" Style="{StaticResource Ilu.Text.Caption}" TextTrimming="CharacterEllipsis"
+                     HorizontalAlignment="Left"/>
+        </Grid>
+        <TextBlock Text="{Binding LiveNote}" Style="{StaticResource Ilu.Text.Caption}" Height="18"
+                   Visibility="{Binding LiveNote, Converter={x:Static c:TextToVisibilityConverter.Instance}}"/>
+      </StackPanel>
+
+      <!-- D3: transport, symmetric around Play -->
+      <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,8"
+                  KeyboardNavigation.TabNavigation="Continue">
+        <StackPanel>
+          <Button Style="{StaticResource Ilu.Button.Transport}" Command="{Binding RunCommand}" CommandParameter="{x:Static core:PrompterCommand.JumpToStart}"
+                  IsEnabled="{Binding CanStepBack}" KeyboardNavigation.TabIndex="1"
+                  ToolTip="Jump to start and pause (Home)" AutomationProperties.Name="Jump to start" AutomationProperties.AcceleratorKey="Home">
+            <TextBlock Text="{x:Static t:IluIcons.JumpToStart}" Style="{StaticResource Ilu.Text.IconTransport}"/>
+          </Button>
+          <TextBlock Text="Start" Style="{StaticResource TransportCaption}"
+                     Visibility="{Binding ShowTransportCaptions, Converter={x:Static c:BoolToVisibilityConverter.Instance}}"/>
+        </StackPanel>
+        <StackPanel Margin="8,0,0,0">
+          <Button Style="{StaticResource Ilu.Button.Transport}" Command="{Binding RunCommand}" CommandParameter="{x:Static core:PrompterCommand.SectionPrevious}"
+                  IsEnabled="{Binding CanStepBack}" KeyboardNavigation.TabIndex="2"
+                  ToolTip="Previous section (Ctrl+Up)" AutomationProperties.Name="Previous section" AutomationProperties.AcceleratorKey="Ctrl+Up">
+            <TextBlock Text="{x:Static t:IluIcons.SectionPrevious}" Style="{StaticResource Ilu.Text.IconTransport}"/>
+          </Button>
+          <TextBlock Text="Section" Style="{StaticResource TransportCaption}"
+                     Visibility="{Binding ShowTransportCaptions, Converter={x:Static c:BoolToVisibilityConverter.Instance}}"/>
+        </StackPanel>
+        <StackPanel Margin="8,0,0,0">
+          <Button Style="{StaticResource Ilu.Button.Transport}" Command="{Binding RunCommand}" CommandParameter="{x:Static core:PrompterCommand.ParagraphPrevious}"
+                  IsEnabled="{Binding CanStepBack}" KeyboardNavigation.TabIndex="3"
+                  ToolTip="Previous paragraph (Page Up)" AutomationProperties.Name="Previous paragraph" AutomationProperties.AcceleratorKey="Page Up">
+            <TextBlock Text="{x:Static t:IluIcons.ParagraphPrevious}" Style="{StaticResource Ilu.Text.IconTransport}"/>
+          </Button>
+          <TextBlock Text="Para" Style="{StaticResource TransportCaption}"
+                     Visibility="{Binding ShowTransportCaptions, Converter={x:Static c:BoolToVisibilityConverter.Instance}}"/>
+        </StackPanel>
+        <StackPanel Margin="8,0,0,0">
+          <Button Style="{StaticResource Ilu.Button.Transport}" Command="{Binding RunCommand}" CommandParameter="{x:Static core:PrompterCommand.LinePrevious}"
+                  IsEnabled="{Binding CanStepBack}" KeyboardNavigation.TabIndex="4"
+                  ToolTip="Previous line (Left or Up in Line scrolling)" AutomationProperties.Name="Previous line" AutomationProperties.AcceleratorKey="Left">
+            <TextBlock Text="{x:Static t:IluIcons.LinePrevious}" Style="{StaticResource Ilu.Text.IconTransport}"/>
+          </Button>
+          <TextBlock Text="Line" Style="{StaticResource TransportCaption}"
+                     Visibility="{Binding ShowTransportCaptions, Converter={x:Static c:BoolToVisibilityConverter.Instance}}"/>
+        </StackPanel>
+
+        <!-- Play: the view's one primary. Stands 12 px from its neighbours. -->
+        <StackPanel Margin="{Binding PlayMargin}">
+          <Button x:Name="PlayButton" Style="{StaticResource Ilu.Button.Play}" Width="{Binding PlayWidth}" Tag="{Binding PlayState}"
+                  Command="{Binding RunCommand}" CommandParameter="{x:Static core:PrompterCommand.PlayPause}"
+                  IsEnabled="{Binding CanPlay}" KeyboardNavigation.TabIndex="0"
+                  ToolTip="Play or pause (Space, F5)" AutomationProperties.Name="{Binding PlayLabel}" AutomationProperties.AcceleratorKey="Space">
+            <StackPanel Orientation="Horizontal">
+              <TextBlock Text="{Binding PlayIcon}" Style="{StaticResource Ilu.Text.Icon}" VerticalAlignment="Center"/>
+              <TextBlock Text="{Binding PlayLabel}" Style="{StaticResource Ilu.Text.ButtonPrimary}" Margin="6,0,0,0" VerticalAlignment="Center"/>
+            </StackPanel>
+          </Button>
+          <TextBlock Text="{Binding PlayCaption}" Style="{StaticResource TransportCaption}"
+                     Visibility="{Binding ShowTransportCaptions, Converter={x:Static c:BoolToVisibilityConverter.Instance}}"/>
+        </StackPanel>
+
+        <StackPanel>
+          <Button Style="{StaticResource Ilu.Button.Transport}" Command="{Binding RunCommand}" CommandParameter="{x:Static core:PrompterCommand.LineNext}"
+                  IsEnabled="{Binding CanStepForward}" KeyboardNavigation.TabIndex="5"
+                  ToolTip="Next line (Right or Down in Line scrolling)" AutomationProperties.Name="Next line" AutomationProperties.AcceleratorKey="Right">
+            <TextBlock Text="{x:Static t:IluIcons.LineNext}" Style="{StaticResource Ilu.Text.IconTransport}"/>
+          </Button>
+          <TextBlock Text="Line" Style="{StaticResource TransportCaption}"
+                     Visibility="{Binding ShowTransportCaptions, Converter={x:Static c:BoolToVisibilityConverter.Instance}}"/>
+        </StackPanel>
+        <StackPanel Margin="8,0,0,0">
+          <Button Style="{StaticResource Ilu.Button.Transport}" Command="{Binding RunCommand}" CommandParameter="{x:Static core:PrompterCommand.ParagraphNext}"
+                  IsEnabled="{Binding CanStepForward}" KeyboardNavigation.TabIndex="6"
+                  ToolTip="Next paragraph (Page Down)" AutomationProperties.Name="Next paragraph" AutomationProperties.AcceleratorKey="Page Down">
+            <TextBlock Text="{x:Static t:IluIcons.ParagraphNext}" Style="{StaticResource Ilu.Text.IconTransport}"/>
+          </Button>
+          <TextBlock Text="Para" Style="{StaticResource TransportCaption}"
+                     Visibility="{Binding ShowTransportCaptions, Converter={x:Static c:BoolToVisibilityConverter.Instance}}"/>
+        </StackPanel>
+        <StackPanel Margin="8,0,0,0">
+          <Button Style="{StaticResource Ilu.Button.Transport}" Command="{Binding RunCommand}" CommandParameter="{x:Static core:PrompterCommand.SectionNext}"
+                  IsEnabled="{Binding CanStepForward}" KeyboardNavigation.TabIndex="7"
+                  ToolTip="Next section (Ctrl+Down)" AutomationProperties.Name="Next section" AutomationProperties.AcceleratorKey="Ctrl+Down">
+            <TextBlock Text="{x:Static t:IluIcons.SectionNext}" Style="{StaticResource Ilu.Text.IconTransport}"/>
+          </Button>
+          <TextBlock Text="Section" Style="{StaticResource TransportCaption}"
+                     Visibility="{Binding ShowTransportCaptions, Converter={x:Static c:BoolToVisibilityConverter.Instance}}"/>
+        </StackPanel>
+      </StackPanel>
+
+      <!-- D4: speed. Track centred on zero; value in DM Mono 24; Shift steps 0.1 -->
+      <Grid Grid.Row="3" Margin="0,0,0,8" Height="44" KeyboardNavigation.TabNavigation="Continue">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="Auto"/>
+          <ColumnDefinition Width="*"/>
+          <ColumnDefinition Width="Auto"/>
+          <ColumnDefinition Width="Auto"/>
+          <ColumnDefinition Width="Auto"/>
+        </Grid.ColumnDefinitions>
+        <Button x:Name="SlowerButton" Style="{StaticResource Ilu.Button.Transport}" Click="OnSlower" KeyboardNavigation.TabIndex="8"
+                ToolTip="Slower by 0.5 (Down; Shift for 0.1)" AutomationProperties.Name="Slower" AutomationProperties.AcceleratorKey="Down">
+          <TextBlock Text="&#x2212;" Style="{StaticResource Ilu.Text.Readout}" FontSize="20" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"/>
+        </Button>
+        <Slider Grid.Column="1" Margin="8,0" Style="{StaticResource Ilu.Slider.Speed}" Value="{Binding Speed, Mode=TwoWay}"
+                Tag="{Binding PlayState}" KeyboardNavigation.TabIndex="9"
+                SmallChange="0.5" LargeChange="1" TickFrequency="0.1" IsSnapToTickEnabled="True"
+                ToolTip="{Binding SpeedTooltip}" AutomationProperties.Name="Speed"
+                Visibility="{Binding IsLineScrolling, Converter={x:Static c:BoolToVisibilityConverter.Instance}, ConverterParameter=invert}"/>
+        <TextBlock Grid.Column="1" Margin="8,0" VerticalAlignment="Center" Style="{StaticResource Ilu.Text.Caption}"
+                   Text="Play steps one line at a time."
+                   Visibility="{Binding IsLineScrolling, Converter={x:Static c:BoolToVisibilityConverter.Instance}}" TextWrapping="Wrap"/>
+        <Button x:Name="FasterButton" Grid.Column="2" Style="{StaticResource Ilu.Button.Transport}" Click="OnFaster" KeyboardNavigation.TabIndex="10"
+                ToolTip="Faster by 0.5 (Up; Shift for 0.1)" AutomationProperties.Name="Faster" AutomationProperties.AcceleratorKey="Up">
+          <TextBlock Text="+" Style="{StaticResource Ilu.Text.Readout}" FontSize="20" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"/>
+        </Button>
+        <StackPanel Grid.Column="3" Margin="12,0,0,0" VerticalAlignment="Center" MinWidth="64" ToolTip="{Binding SpeedTooltip}">
+          <TextBlock Text="{Binding SpeedText}" Style="{StaticResource Ilu.Text.Readout}" HorizontalAlignment="Right"
+                     Visibility="{Binding IsLineScrolling, Converter={x:Static c:BoolToVisibilityConverter.Instance}, ConverterParameter=invert}"/>
+          <TextBlock Text="{Binding WpmDisplay}" Style="{StaticResource CaptionOrNothing}" HorizontalAlignment="Right"/>
+          <StackPanel HorizontalAlignment="Right" Visibility="{Binding IsLineScrolling, Converter={x:Static c:BoolToVisibilityConverter.Instance}}">
+            <TextBlock Text="{Binding StepCaption}" Style="{StaticResource Ilu.Text.Label}" HorizontalAlignment="Right"/>
+            <TextBlock Text="{Binding StepValue}" Style="{StaticResource Ilu.Text.Mono}" HorizontalAlignment="Right"/>
+          </StackPanel>
+        </StackPanel>
+        <!-- At Narrow the readouts row is gone; time remaining stays here as a readout -->
+        <StackPanel Grid.Column="4" Margin="12,0,0,0" VerticalAlignment="Center"
+                    Visibility="{Binding TimeInSpeedRow, Converter={x:Static c:BoolToVisibilityConverter.Instance}}">
+          <TextBlock Text="{Binding TimeText}" Style="{StaticResource Ilu.Text.Readout}" HorizontalAlignment="Right" FontSize="20"/>
+          <TextBlock Text="{Binding TimeCaption}" Style="{StaticResource Ilu.Text.Caption}" HorizontalAlignment="Right"/>
+        </StackPanel>
+      </Grid>
+
+      <!-- D5: mode switch and Blank output -->
+      <Grid Grid.Row="4" Margin="0,0,0,8" Height="36" KeyboardNavigation.TabNavigation="Continue">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="Auto"/>
+          <ColumnDefinition Width="*"/>
+          <ColumnDefinition Width="Auto"/>
+        </Grid.ColumnDefinitions>
+        <Border Background="{StaticResource Ilu.Brush.Canvas}" BorderBrush="{StaticResource Ilu.Brush.LineStrong}" BorderThickness="1"
+                CornerRadius="{StaticResource Ilu.Radius.Control}" Padding="0">
+          <StackPanel Orientation="Horizontal">
+            <RadioButton Style="{StaticResource Ilu.RadioButton.Segment}" GroupName="ScrollMode" Content="{Binding DisplayModeLabel}"
+                         IsChecked="{Binding IsDisplayScrolling, Mode=TwoWay}" KeyboardNavigation.TabIndex="11"
+                         ToolTip="Smooth, at the set speed (M switches mode)" AutomationProperties.Name="Display scrolling" Height="34"/>
+            <Border Width="1" Background="{StaticResource Ilu.Brush.LineStrong}"/>
+            <RadioButton Style="{StaticResource Ilu.RadioButton.Segment}" GroupName="ScrollMode" Content="{Binding LineModeLabel}"
+                         IsChecked="{Binding IsLineScrollingSelected, Mode=TwoWay}" KeyboardNavigation.TabIndex="12"
+                         ToolTip="One line per step (M switches mode)" AutomationProperties.Name="Line scrolling" Height="34"/>
+          </StackPanel>
+        </Border>
+        <ToggleButton Grid.Column="2" Style="{StaticResource Ilu.ToggleButton.Blank}" Content="{Binding BlankLabel}" KeyboardNavigation.TabIndex="13"
+                      IsChecked="{Binding IsBlank, Mode=TwoWay}"
+                      ToolTip="Show black to the presenter; the script keeps its place (B or F8)" AutomationProperties.Name="Blank output"
+                      AutomationProperties.AcceleratorKey="B"/>
+      </Grid>
+
+      <!-- D6: readouts -->
+      <Grid Grid.Row="5" Margin="0,0,0,8" Height="32"
+            Visibility="{Binding ShowReadoutsRow, Converter={x:Static c:BoolToVisibilityConverter.Instance}}">
+        <StackPanel Orientation="Horizontal" VerticalAlignment="Center" HorizontalAlignment="Left">
+          <TextBlock Text="{Binding LineText}" Style="{StaticResource Ilu.Text.Mono}"/>
+          <TextBlock Text="{Binding SectionText}" Style="{StaticResource Ilu.Text.Mono}" Margin="16,0,0,0"/>
+        </StackPanel>
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center"
+                    Visibility="{Binding TimeInSpeedRow, Converter={x:Static c:BoolToVisibilityConverter.Instance}, ConverterParameter=invert}">
+          <TextBlock Text="{Binding TimeText}" Style="{StaticResource Ilu.Text.Readout}" VerticalAlignment="Center"/>
+          <TextBlock Text="{Binding TimeCaption}" Style="{StaticResource Ilu.Text.Caption}" Margin="8,0,0,0" VerticalAlignment="Center"/>
+        </StackPanel>
+      </Grid>
+
+      <!-- D7: output layout (Wide only; at Compact and Narrow it lives in Settings > Output) -->
+      <Grid Grid.Row="6" Visibility="{Binding ShowOutputLayout, Converter={x:Static c:BoolToVisibilityConverter.Instance}}">
+       <Grid DataContext="{Binding Layout}">
+        <Grid.RowDefinitions>
+          <RowDefinition Height="Auto"/>
+          <RowDefinition Height="Auto"/>
+          <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+        <Border Style="{StaticResource Ilu.Divider}" Margin="0,0,0,8"/>
+        <Grid Grid.Row="1" Margin="0,0,0,8">
+          <TextBlock Text="Output layout" Style="{StaticResource Ilu.Text.Heading}" VerticalAlignment="Center" HorizontalAlignment="Left"/>
+          <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+            <TextBlock Text="Lines" Style="{StaticResource Ilu.Text.Label}" VerticalAlignment="Center" Margin="0,0,8,0"/>
+            <c:NumberBox Value="{Binding LinesVisible, Mode=TwoWay}" Minimum="4" Maximum="16" Step="1" ShiftStep="1" Decimals="0" AutomationProperties.Name="Lines visible"/>
+            <TextBlock Text="Spacing" Style="{StaticResource Ilu.Text.Label}" VerticalAlignment="Center" Margin="16,0,8,0"/>
+            <c:NumberBox Value="{Binding LineSpacing, Mode=TwoWay}" Minimum="1" Maximum="2" Step="0.05" ShiftStep="0.05" Decimals="2" AutomationProperties.Name="Line spacing"/>
+          </StackPanel>
+        </Grid>
+        <v:MarginEditor Grid.Row="2" DataContext="{Binding Margins}"/>
+       </Grid>
+      </Grid>
+    </Grid>
+  </Border>
+</UserControl>

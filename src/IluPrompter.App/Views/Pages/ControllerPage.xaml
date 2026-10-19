@@ -1,0 +1,159 @@
+<UserControl x:Class="IluPrompter.App.Views.Pages.ControllerPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="clr-namespace:IluPrompter.App.ViewModels"
+             xmlns:t="clr-namespace:IluPrompter.Theme;assembly=IluPrompter.Theme"
+             xmlns:c="clr-namespace:IluPrompter.App.Controls"
+             Focusable="False" IsTabStop="False">
+  <!-- Settings > Controller. DataContext: ControllerPageViewModel. -->
+  <UserControl.Resources>
+    <!-- A selectable 64 px card: icon, name + one-line description, its live chip, a tick when chosen. -->
+    <Style x:Key="ControllerCard" TargetType="RadioButton">
+      <Setter Property="MinHeight" Value="64"/>
+      <Setter Property="Margin" Value="0,0,0,8"/>
+      <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+      <Setter Property="FocusVisualStyle" Value="{StaticResource Ilu.FocusVisual}"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="RadioButton">
+            <Border x:Name="Card" Background="{StaticResource Ilu.Brush.Surface}" BorderBrush="{StaticResource Ilu.Brush.LineStrong}" BorderThickness="1"
+                    CornerRadius="{StaticResource Ilu.Radius.Panel}" Padding="14,0" SnapsToDevicePixels="True">
+              <Grid>
+                <ContentPresenter VerticalAlignment="Center"/>
+                <TextBlock x:Name="Tick" Text="&#xE73E;" FontFamily="{StaticResource Ilu.Font.Icon}" FontSize="14" Foreground="{StaticResource Ilu.Brush.TextStrong}"
+                           HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,8,-6,0" Visibility="Collapsed"/>
+              </Grid>
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True">
+                <Setter TargetName="Card" Property="Background" Value="{StaticResource Ilu.Brush.Raised}"/>
+              </Trigger>
+              <Trigger Property="IsChecked" Value="True">
+                <Setter TargetName="Card" Property="BorderBrush" Value="{StaticResource Ilu.Brush.Text}"/>
+                <Setter TargetName="Card" Property="BorderThickness" Value="2"/>
+                <Setter TargetName="Card" Property="Padding" Value="13,0"/>
+                <Setter TargetName="Tick" Property="Visibility" Value="Visible"/>
+              </Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+
+    <DataTemplate x:Key="ChipContent">
+      <StackPanel Orientation="Horizontal">
+        <TextBlock Text="{Binding Glyph}" Style="{StaticResource Ilu.Text.Glyph}" VerticalAlignment="Center" Margin="0,0,6,0"/>
+        <TextBlock Text="{Binding Subject}" Style="{StaticResource Ilu.Text.Label}" VerticalAlignment="Center"/>
+        <TextBlock Text=" &#x00B7; " Style="{StaticResource Ilu.Text.Label}" VerticalAlignment="Center"/>
+        <TextBlock Text="{Binding State}" Style="{StaticResource Ilu.Text.State}" FontSize="13" VerticalAlignment="Center"/>
+      </StackPanel>
+    </DataTemplate>
+  </UserControl.Resources>
+
+  <StackPanel MaxWidth="560" HorizontalAlignment="Left">
+    <TextBlock Style="{StaticResource Ilu.Text.Body}" Foreground="{StaticResource Ilu.Brush.TextMuted}" Margin="0,0,0,16"
+               Text="Choose the controller that drives the prompt. The keyboard always works too."/>
+
+    <!-- cards -->
+    <RadioButton GroupName="Controller" Style="{StaticResource ControllerCard}" IsChecked="{Binding WheelSelected, Mode=TwoWay}"
+                 AutomationProperties.Name="Mouse wheel">
+      <Grid>
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="40"/>
+          <ColumnDefinition Width="*"/>
+          <ColumnDefinition Width="Auto"/>
+        </Grid.ColumnDefinitions>
+        <TextBlock Text="{x:Static t:IluIcons.Mouse}" Style="{StaticResource Ilu.Text.IconTransport}" Foreground="{StaticResource Ilu.Brush.TextStrong}" HorizontalAlignment="Left"/>
+        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+          <TextBlock Text="Mouse wheel" Style="{StaticResource Ilu.Text.Heading}"/>
+          <TextBlock Text="The wheel drives the prompt over the preview." Style="{StaticResource Ilu.Text.Caption}" TextTrimming="CharacterEllipsis"/>
+        </StackPanel>
+        <ContentControl Grid.Column="2" Style="{StaticResource Ilu.Chip}" Margin="8,0,24,0" Tag="{Binding WheelChip.StyleTag}"
+                        Content="{Binding WheelChip}" ContentTemplate="{StaticResource ChipContent}" ToolTip="{Binding WheelChip.Tooltip}"/>
+      </Grid>
+    </RadioButton>
+    <RadioButton GroupName="Controller" Style="{StaticResource ControllerCard}" IsChecked="{Binding XboxSelected, Mode=TwoWay}"
+                 AutomationProperties.Name="Xbox controller">
+      <Grid>
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="40"/>
+          <ColumnDefinition Width="*"/>
+          <ColumnDefinition Width="Auto"/>
+        </Grid.ColumnDefinitions>
+        <TextBlock Text="{x:Static t:IluIcons.Gamepad}" Style="{StaticResource Ilu.Text.IconTransport}" Foreground="{StaticResource Ilu.Brush.TextStrong}" HorizontalAlignment="Left"/>
+        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+          <TextBlock Text="Xbox controller" Style="{StaticResource Ilu.Text.Heading}"/>
+          <TextBlock Text="Triggers set the speed; the buttons step lines." Style="{StaticResource Ilu.Text.Caption}" TextTrimming="CharacterEllipsis"/>
+        </StackPanel>
+        <ContentControl Grid.Column="2" Style="{StaticResource Ilu.Chip}" Margin="8,0,24,0" Tag="{Binding XboxChip.StyleTag}"
+                        Content="{Binding XboxChip}" ContentTemplate="{StaticResource ChipContent}" ToolTip="{Binding XboxChip.Tooltip}"/>
+      </Grid>
+    </RadioButton>
+    <RadioButton GroupName="Controller" Style="{StaticResource ControllerCard}" IsChecked="{Binding ShuttleSelected, Mode=TwoWay}"
+                 AutomationProperties.Name="Jog-shuttle">
+      <Grid>
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="40"/>
+          <ColumnDefinition Width="*"/>
+          <ColumnDefinition Width="Auto"/>
+        </Grid.ColumnDefinitions>
+        <TextBlock Text="{x:Static t:IluIcons.Dial}" Style="{StaticResource Ilu.Text.IconTransport}" Foreground="{StaticResource Ilu.Brush.TextStrong}" HorizontalAlignment="Left"/>
+        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+          <TextBlock Text="Jog-shuttle" Style="{StaticResource Ilu.Text.Heading}"/>
+          <TextBlock Text="The ring sets the speed; the jog wheel steps lines." Style="{StaticResource Ilu.Text.Caption}" TextTrimming="CharacterEllipsis"/>
+        </StackPanel>
+        <ContentControl Grid.Column="2" Style="{StaticResource Ilu.Chip}" Margin="8,0,24,0" Tag="{Binding ShuttleChip.StyleTag}"
+                        Content="{Binding ShuttleChip}" ContentTemplate="{StaticResource ChipContent}" ToolTip="{Binding ShuttleChip.Tooltip}"/>
+      </Grid>
+    </RadioButton>
+
+    <!-- device -->
+    <TextBlock Text="{Binding DeviceLabel}" Style="{StaticResource Ilu.Text.Heading}" Margin="0,16,0,6"/>
+    <StackPanel Orientation="Horizontal">
+      <ComboBox Width="340" ItemsSource="{Binding Devices}" SelectedValuePath="Id"
+                SelectedValue="{Binding SelectedDeviceId, Mode=TwoWay}" AutomationProperties.Name="Device">
+        <ComboBox.ItemTemplate>
+          <DataTemplate>
+            <TextBlock Text="{Binding Label}" Style="{StaticResource Ilu.Text.Body}" TextWrapping="NoWrap"/>
+          </DataTemplate>
+        </ComboBox.ItemTemplate>
+      </ComboBox>
+      <Button Content="Refresh list" Margin="8,0,0,0" MinHeight="32" Height="32" Padding="12,0" Click="OnRefresh"/>
+    </StackPanel>
+    <TextBlock Text="{Binding DeviceHint}" Style="{StaticResource Ilu.Text.Caption}" TextWrapping="Wrap" Margin="0,6,0,0"/>
+
+    <!-- sensitivity -->
+    <TextBlock Text="{Binding SensitivityLabel}" Style="{StaticResource Ilu.Text.Heading}" Margin="0,16,0,6"/>
+    <c:NumberBox HorizontalAlignment="Left" Value="{Binding SensitivityValue, Mode=TwoWay}" Minimum="{Binding SensitivityMin}"
+                 Maximum="{Binding SensitivityMax}" Step="{Binding SensitivityStep}" ShiftStep="{Binding SensitivityStep}" Decimals="1"
+                 AutomationProperties.Name="Speed sensitivity"/>
+
+    <!-- mapping (read-only in v1) -->
+    <TextBlock Text="What each control does" Style="{StaticResource Ilu.Text.Heading}" Margin="0,24,0,2"/>
+    <TextBlock Text="Read-only for now." Style="{StaticResource Ilu.Text.Caption}" Margin="0,0,0,6"/>
+    <Border Background="{StaticResource Ilu.Brush.Surface}" BorderBrush="{StaticResource Ilu.Brush.Line}" BorderThickness="1"
+            CornerRadius="{StaticResource Ilu.Radius.Panel}" Padding="4">
+      <ItemsControl ItemsSource="{Binding Mapping}" Focusable="False">
+        <ItemsControl.ItemTemplate>
+          <DataTemplate DataType="{x:Type vm:MappingRow}">
+            <Grid MinHeight="30">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="190"/>
+                <ColumnDefinition Width="*"/>
+              </Grid.ColumnDefinitions>
+              <TextBlock Text="{Binding Control}" Style="{StaticResource Ilu.Text.Label}" Margin="10,0" VerticalAlignment="Center"/>
+              <TextBlock Grid.Column="1" Text="{Binding Action}" Style="{StaticResource Ilu.Text.Body}" VerticalAlignment="Center" Margin="0,4"/>
+            </Grid>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </Border>
+
+    <!-- test -->
+    <TextBlock Text="Test: move the controller" Style="{StaticResource Ilu.Text.Heading}" Margin="0,24,0,6"/>
+    <Border Background="{StaticResource Ilu.Brush.Canvas}" BorderBrush="{StaticResource Ilu.Brush.LineStrong}" BorderThickness="1"
+            CornerRadius="{StaticResource Ilu.Radius.Control}" Padding="12,10" MinHeight="48">
+      <TextBlock Text="{Binding TestReadout}" Style="{StaticResource Ilu.Text.Mono}" VerticalAlignment="Center"/>
+    </Border>
+  </StackPanel>
+</UserControl>

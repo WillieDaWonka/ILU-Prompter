@@ -1,8 +1,18 @@
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <!-- The full control theme (stream D). DESIGN.md is the source for every value; no hex literals in any of these files:
+       colours come from Ilu.Color / Ilu.Brush keys in IluTokens.xaml. -->
   <ResourceDictionary.MergedDictionaries>
     <ResourceDictionary Source="/IluPrompter.Theme;component/Themes/IluTokens.xaml"/>
+    <ResourceDictionary Source="/IluPrompter.Theme;component/Themes/IluText.xaml"/>
+    <ResourceDictionary Source="/IluPrompter.Theme;component/Themes/IluButtons.xaml"/>
+    <ResourceDictionary Source="/IluPrompter.Theme;component/Themes/IluInputs.xaml"/>
+    <ResourceDictionary Source="/IluPrompter.Theme;component/Themes/IluMenus.xaml"/>
+    <ResourceDictionary Source="/IluPrompter.Theme;component/Themes/IluSurfaces.xaml"/>
   </ResourceDictionary.MergedDictionaries>
-  <!-- Stream D: Ilu.Text.* TextBlock styles and every control template (buttons, chips, segmented, inputs,
-       menus, tooltips, scroll bars, check boxes) per DESIGN.md. No hex literals here: use Ilu.Color/Ilu.Brush keys. -->
+
+  <!-- Grid row lengths for the fixed bars (the sys:Double tokens in IluTokens.xaml cannot be used as GridLength). Same values as DESIGN.md. -->
+  <GridLength x:Key="Ilu.Grid.AppBar">44</GridLength>
+  <GridLength x:Key="Ilu.Grid.StatusBar">28</GridLength>
+  <GridLength x:Key="Ilu.Grid.PanelTitleBar">36</GridLength>
 </ResourceDictionary>

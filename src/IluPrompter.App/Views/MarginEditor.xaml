@@ -1,0 +1,74 @@
+<UserControl x:Class="IluPrompter.App.Views.MarginEditor"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="clr-namespace:IluPrompter.App.Controls"
+             Focusable="False" IsTabStop="False">
+  <!-- DESIGN.md "Margin editor with link toggle": a small diagram of the output (16:9 outline in line-strong, margin
+       bands in margin-overlay), one number box per side (72 x 32, DM Mono, "px" outside) and the link toggle in the
+       middle. Values are pixels of the output display; the app stores fractions. DataContext: MarginEditorViewModel. -->
+  <Grid HorizontalAlignment="Center">
+    <Grid.ColumnDefinitions>
+      <ColumnDefinition Width="Auto"/>
+      <ColumnDefinition Width="Auto"/>
+      <ColumnDefinition Width="Auto"/>
+    </Grid.ColumnDefinitions>
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="Auto"/>
+    </Grid.RowDefinitions>
+
+    <!-- Top -->
+    <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,6">
+      <TextBlock Text="Top" Style="{StaticResource Ilu.Text.Label}" VerticalAlignment="Center" Margin="0,0,8,0"/>
+      <c:NumberBox Value="{Binding Top, Mode=TwoWay}" Maximum="{Binding MaxVertical}" Step="1" ShiftStep="8" AutomationProperties.Name="Top margin in pixels"/>
+      <TextBlock Text="px" Style="{StaticResource Ilu.Text.Caption}" VerticalAlignment="Center" Margin="6,0,0,0"/>
+    </StackPanel>
+
+    <!-- Left -->
+    <StackPanel Grid.Row="1" VerticalAlignment="Center" Margin="0,0,10,0">
+      <TextBlock Text="Left" Style="{StaticResource Ilu.Text.Label}" HorizontalAlignment="Left" Margin="0,0,0,2"/>
+      <StackPanel Orientation="Horizontal">
+        <c:NumberBox Value="{Binding Left, Mode=TwoWay}" Maximum="{Binding MaxHorizontal}" Step="1" ShiftStep="8" AutomationProperties.Name="Left margin in pixels"/>
+        <TextBlock Text="px" Style="{StaticResource Ilu.Text.Caption}" VerticalAlignment="Center" Margin="6,0,0,0"/>
+      </StackPanel>
+    </StackPanel>
+
+    <!-- Diagram: the output, margins tinted, link toggle in the middle -->
+    <Grid Grid.Row="1" Grid.Column="1" Width="150" Height="84" Background="{StaticResource Ilu.Brush.ScriptPaper}">
+      <Canvas x:Name="Bands" IsHitTestVisible="False" ClipToBounds="True">
+        <Rectangle x:Name="BandLeft" Fill="{StaticResource Ilu.Brush.MarginOverlay}"/>
+        <Rectangle x:Name="BandRight" Fill="{StaticResource Ilu.Brush.MarginOverlay}"/>
+        <Rectangle x:Name="BandTop" Fill="{StaticResource Ilu.Brush.MarginOverlay}"/>
+        <Rectangle x:Name="BandBottom" Fill="{StaticResource Ilu.Brush.MarginOverlay}"/>
+      </Canvas>
+      <Border BorderBrush="{StaticResource Ilu.Brush.LineStrong}" BorderThickness="1" IsHitTestVisible="False"/>
+      <ToggleButton Style="{StaticResource Ilu.ToggleButton.ToolbarWide}" IsChecked="{Binding IsLinked, Mode=TwoWay}"
+                    HorizontalAlignment="Center" VerticalAlignment="Center" Height="46" MinWidth="56" Padding="6,2"
+                    Background="{StaticResource Ilu.Brush.Surface}"
+                    ToolTip="{Binding LinkTooltip}" AutomationProperties.Name="Link margins">
+        <StackPanel>
+          <TextBlock Text="&#xE71B;" Style="{StaticResource Ilu.Text.Icon}"/>
+          <TextBlock Text="{Binding LinkCaption}" Style="{StaticResource Ilu.Text.Caption}" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}"
+                     HorizontalAlignment="Center"/>
+        </StackPanel>
+      </ToggleButton>
+    </Grid>
+
+    <!-- Right -->
+    <StackPanel Grid.Row="1" Grid.Column="2" VerticalAlignment="Center" Margin="10,0,0,0">
+      <TextBlock Text="Right" Style="{StaticResource Ilu.Text.Label}" HorizontalAlignment="Left" Margin="0,0,0,2"/>
+      <StackPanel Orientation="Horizontal">
+        <c:NumberBox Value="{Binding Right, Mode=TwoWay}" Maximum="{Binding MaxHorizontal}" Step="1" ShiftStep="8" AutomationProperties.Name="Right margin in pixels"/>
+        <TextBlock Text="px" Style="{StaticResource Ilu.Text.Caption}" VerticalAlignment="Center" Margin="6,0,0,0"/>
+      </StackPanel>
+    </StackPanel>
+
+    <!-- Bottom -->
+    <StackPanel Grid.Row="2" Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,6,0,0">
+      <TextBlock Text="Bottom" Style="{StaticResource Ilu.Text.Label}" VerticalAlignment="Center" Margin="0,0,8,0"/>
+      <c:NumberBox Value="{Binding Bottom, Mode=TwoWay}" Maximum="{Binding MaxVertical}" Step="1" ShiftStep="8" AutomationProperties.Name="Bottom margin in pixels"/>
+      <TextBlock Text="px" Style="{StaticResource Ilu.Text.Caption}" VerticalAlignment="Center" Margin="6,0,0,0"/>
+    </StackPanel>
+  </Grid>
+</UserControl>

@@ -1,0 +1,52 @@
+<UserControl x:Class="IluPrompter.App.Controls.NumberBox"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Focusable="False" IsTabStop="False" Width="72" Height="32" SnapsToDevicePixels="True">
+  <!-- DESIGN.md "Margin editor": number box 72 x 32, value in DM Mono, up/down buttons. Up/Down keys +-Step, Shift +-ShiftStep.
+       The mouse wheel never changes it (a wheel scrolls what it is over). -->
+  <Grid>
+    <TextBox x:Name="Box" Style="{StaticResource Ilu.TextBox.Mono}" TextAlignment="Right" Padding="4,0,22,0"
+             AutomationProperties.Name="{Binding (AutomationProperties.Name), RelativeSource={RelativeSource AncestorType=UserControl}}"
+             PreviewKeyDown="OnBoxPreviewKeyDown" LostKeyboardFocus="OnBoxLostFocus" GotKeyboardFocus="OnBoxGotFocus"/>
+    <StackPanel HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,3,0">
+      <RepeatButton x:Name="Up" Width="18" Height="13" Focusable="False" IsTabStop="False" Click="OnUp" Style="{x:Null}"
+                    ToolTip="Increase">
+        <RepeatButton.Template>
+          <ControlTemplate TargetType="RepeatButton">
+            <Border x:Name="Bd" Background="Transparent" CornerRadius="2">
+              <TextBlock Text="&#xE70E;" FontFamily="{StaticResource Ilu.Font.Icon}" FontSize="8" HorizontalAlignment="Center"
+                         VerticalAlignment="Center" Foreground="{StaticResource Ilu.Brush.TextMuted}"/>
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True">
+                <Setter TargetName="Bd" Property="Background" Value="{StaticResource Ilu.Brush.Raised}"/>
+              </Trigger>
+              <Trigger Property="IsPressed" Value="True">
+                <Setter TargetName="Bd" Property="Background" Value="{StaticResource Ilu.Brush.Pressed}"/>
+              </Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </RepeatButton.Template>
+      </RepeatButton>
+      <RepeatButton x:Name="Down" Width="18" Height="13" Focusable="False" IsTabStop="False" Click="OnDown" Style="{x:Null}"
+                    ToolTip="Decrease">
+        <RepeatButton.Template>
+          <ControlTemplate TargetType="RepeatButton">
+            <Border x:Name="Bd" Background="Transparent" CornerRadius="2">
+              <TextBlock Text="&#xE70D;" FontFamily="{StaticResource Ilu.Font.Icon}" FontSize="8" HorizontalAlignment="Center"
+                         VerticalAlignment="Center" Foreground="{StaticResource Ilu.Brush.TextMuted}"/>
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True">
+                <Setter TargetName="Bd" Property="Background" Value="{StaticResource Ilu.Brush.Raised}"/>
+              </Trigger>
+              <Trigger Property="IsPressed" Value="True">
+                <Setter TargetName="Bd" Property="Background" Value="{StaticResource Ilu.Brush.Pressed}"/>
+              </Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </RepeatButton.Template>
+      </RepeatButton>
+    </StackPanel>
+  </Grid>
+</UserControl>
