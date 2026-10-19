@@ -30,6 +30,7 @@ internal sealed class FrameStats
     private int _next;
     private int _over;
     private long _lastTimestamp;
+    private bool _lastMoving = true;
     private long _windowStart;
     private int _gc0, _gc1, _gc2;
     private FrameStatsReport _lastReport;
@@ -51,9 +52,18 @@ internal sealed class FrameStats
     public FrameStatsReport LastReport => _lastReport;
 
     /// <summary>Record that a frame happened at <paramref name="timestamp"/> (Stopwatch ticks).</summary>
-    public void Record(long timestamp)
+    public void Record(long timestamp) => Record(timestamp, moving: true);
+
+    /// <summary>
+    /// Record a frame; the interval ending here counts only if the picture was moving in this frame or the one before.
+    /// While the prompt stands still WPF need not render every vsync, and the preview gets only 250 ms heartbeats, so
+    /// counting still frames would report smoothness problems where nothing moves (seen at integration).
+    /// </summary>
+    public void Record(long timestamp, bool moving)
     {
-        if (_lastTimestamp != 0)
+        var counts = moving || _lastMoving;
+        _lastMoving = moving;
+        if (_lastTimestamp != 0 && counts)
         {
             var ms = (timestamp - _lastTimestamp) * 1000.0 / _frequency;
             if (ms > 0 && ms < GapMs)
@@ -86,6 +96,7 @@ internal sealed class FrameStats
         _next = 0;
         _over = 0;
         _lastTimestamp = 0;
+        _lastMoving = true;
         _windowStart = 0;
     }
 

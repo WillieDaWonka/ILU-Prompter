@@ -42,6 +42,7 @@ public sealed class PrompterPreview : Control
     private PrompterSurface? _surface;
     private FrameClock _clock = new();
     private FrameStats? _stats;
+    private double _lastStatsPosition = double.NaN;
     private bool _outputRendering;
     private IFramePulse? _pulse;
     private bool _renderingSubscribed;
@@ -254,8 +255,10 @@ public sealed class PrompterPreview : Control
             ApplyDriveMode();
         }
 
-        surface.SetPosition(services.Engine.ReadPosition());
-        _stats?.Record(Stopwatch.GetTimestamp());
+        var position = services.Engine.ReadPosition();
+        surface.SetPosition(position);
+        _stats?.Record(Stopwatch.GetTimestamp(), moving: position != _lastStatsPosition);
+        _lastStatsPosition = position;
     }
 
     private void OnRendering(object? sender, EventArgs e)
@@ -271,8 +274,10 @@ public sealed class PrompterPreview : Control
         if (_outputRendering) services.Engine.TickIfStale(now, 0.05);
         else services.Engine.TickIfStale(frame, 0.001);
 
-        surface.SetPosition(services.Engine.ReadPosition());
-        _stats?.Record(frame);
+        var position = services.Engine.ReadPosition();
+        surface.SetPosition(position);
+        _stats?.Record(frame, moving: position != _lastStatsPosition);
+        _lastStatsPosition = position;
     }
 
     // ------------------------------------------------------------------ state from the output thread
