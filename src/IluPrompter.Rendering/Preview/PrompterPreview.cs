@@ -358,6 +358,9 @@ public sealed class PrompterPreview : Control
     protected override void OnMouseLeftButtonDown(MouseButtonEventArgs e)
     {
         base.OnMouseLeftButtonDown(e);
+        // DESIGN "Keyboard shortcuts": clicking the preview gives the keys to the transport (the shell switches the key
+        // mode when focus arrives here). Without this, Space after a click still typed into the script.
+        if (Focusable && !IsKeyboardFocusWithin) Focus();
         if (_surface is null) return;
         var handle = PreviewMath.HitTest(e.GetPosition(this), _scene.Layout, _surface.TextArea, _surface.Output.WidthDip, _surface.Output.HeightDip);
         if (handle == PreviewHandle.None) return;

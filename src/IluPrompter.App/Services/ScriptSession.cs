@@ -186,7 +186,6 @@ public sealed class ScriptSession
         try
         {
             var file = _files.Load(path);
-            ApplyOverrides(file.Overrides);
             _loading = true;
             try
             {
@@ -196,6 +195,9 @@ public sealed class ScriptSession
             {
                 _loading = false;
             }
+
+            // Only once the script is in: a script that fails to load must not leave its layout in your settings.
+            ApplyOverrides(file.Overrides);
 
             var isNative = string.Equals(Path.GetExtension(path), ".ilup", StringComparison.OrdinalIgnoreCase);
             var title = isNative ? Path.GetFileNameWithoutExtension(path) : (string.IsNullOrWhiteSpace(file.Title) ? Path.GetFileNameWithoutExtension(path) : file.Title);

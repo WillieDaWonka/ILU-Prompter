@@ -424,6 +424,26 @@ public class SectionsViewModelTests
         Assert.Equal(1, rig.Vm.Selected?.Index);
     }
 
+    [Fact]
+    public void RebuildingRows_DoesNotShowTheSectionInTheEditor_SoTypingKeepsTheCaret()
+    {
+        var rig = new Rig();
+        rig.Publish("A", "B");
+        var shown = new List<int>();
+        rig.Vm.Attach(new RecordingEditing(shown));
+        // What the panel does: a selection change shows that section in the editor.
+        rig.Vm.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(SectionsViewModel.Selected)) rig.Vm.ShowInEditor(rig.Vm.Selected);
+        };
+        rig.Vm.Selected = rig.Vm.Rows[1];
+        Assert.Equal([1], shown);
+
+        rig.Publish("A", "B", "C"); // typing above a marker changed the list: rows are rebuilt, selection restored
+        Assert.Equal(1, rig.Vm.Selected?.Index);
+        Assert.Equal([1], shown);
+    }
+
     private sealed class RecordingEditing(List<int> shown) : ISectionEditing
     {
         public void ShowSection(int sectionIndex) => shown.Add(sectionIndex);
