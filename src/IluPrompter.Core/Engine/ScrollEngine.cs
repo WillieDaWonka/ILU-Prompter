@@ -33,6 +33,7 @@ public sealed class ScrollEngine : IScrollEngine
     private int _hasTicked;
     private EngineStatus _status;
     private LayoutGeometry? _geometry;
+    private int _publishSeq;             // seqlock: odd while SetLayout replaces geometry and position together
 
     // State below is guarded by _gate.
     private LayoutGeometry _geo = LayoutGeometry.Empty();
@@ -101,6 +102,26 @@ public sealed class ScrollEngine : IScrollEngine
 
     public double ReadPosition() => BitConverter.Int64BitsToDouble(Interlocked.Read(ref _positionBits));
 
+    public double ReadPosition(out LayoutGeometry? geometry)
+    {
+        var spin = default(SpinWait);
+        while (true)
+        {
+            var before = Volatile.Read(ref _publishSeq);
+            if ((before & 1) == 0)
+            {
+                var g = Volatile.Read(ref _geometry);
+                var p = ReadPosition();
+                if (Volatile.Read(ref _publishSeq) == before)
+                {
+                    geometry = g;
+                    return p;
+                }
+            }
+
+            spin.SpinOnce();
+        }
+    }
     public void Tick(long timestamp) => TickCore(timestamp);
 
     public bool TickIfStale(long timestamp, double staleAfterSeconds = 0.05)
@@ -130,16 +151,26 @@ public sealed class ScrollEngine : IScrollEngine
         EngineStatus? changed;
         lock (_gate)
         {
-            if (_hasLayout && string.Equals(geometry.LayoutKey, _geo.LayoutKey, StringComparison.Ordinal))
+            double visible;
+            Interlocked.Increment(ref _publishSeq);
+            try
             {
-                ApplyViewportOnly(viewport);
+                if (_hasLayout && string.Equals(geometry.LayoutKey, _geo.LayoutKey, StringComparison.Ordinal))
+                {
+                    ApplyViewportOnly(viewport);
+                }
+                else
+                {
+                    ApplyNewGeometry(geometry, viewport, ReferenceEquals(current, _geo) ? map : null);
+                }
+
+                visible = Publish();
             }
-            else
+            finally
             {
-                ApplyNewGeometry(geometry, viewport, ReferenceEquals(current, _geo) ? map : null);
+                Interlocked.Increment(ref _publishSeq);
             }
 
-            var visible = Publish();
             changed = RefreshStatus(visible);
         }
 

@@ -24,7 +24,7 @@ internal sealed record OutputHostOptions(bool DevOutputOnPrimary = false, bool H
 /// output display, never on the primary one (except with the dev flag), and it stays hidden, not moved, when that
 /// display disappears.
 /// </summary>
-public sealed class OutputHost : IOutputSurface, IFramePulse
+public sealed class OutputHost : IOutputSurface, IFramePulse, IPictureSourceProvider
 {
     private static readonly long HeartbeatTicks = Stopwatch.Frequency / 4;
     private const double DevWidthDip = 960;
@@ -38,6 +38,7 @@ public sealed class OutputHost : IOutputSurface, IFramePulse
     private readonly ILayoutGeometryBuilder _geometryBuilder;
     private readonly IAppLog _log;
     private readonly OutputHostOptions _options;
+    private readonly PictureWorker _pictures;
     private readonly object _stateGate = new();
     private readonly object _threadGate = new();
 
@@ -92,7 +93,13 @@ public sealed class OutputHost : IOutputSurface, IFramePulse
         _log = log;
         _options = options;
         _state = OutputState.Initial with { Geometry = settings.Current.Output.LastGeometry };
+        _pictures = new PictureWorker(documents, settings, documentFactory, geometryBuilder, log, () => State.Geometry);
     }
+
+    /// <summary>The layout thread: lays the script out off the output and UI threads for both surfaces (ARCHITECTURE §3).</summary>
+    internal PictureWorker Pictures => _pictures;
+
+    IPictureSource IPictureSourceProvider.Pictures => _pictures;
 
     public OutputState State => Volatile.Read(ref _state);
 
@@ -126,6 +133,7 @@ public sealed class OutputHost : IOutputSurface, IFramePulse
             _thread = thread;
             _initTask = ready.Task;
             thread.Start();
+            _pictures.Start();   // warms up, then lays out the current script before the output is ever shown
             return _initTask;
         }
     }
@@ -175,6 +183,7 @@ public sealed class OutputHost : IOutputSurface, IFramePulse
         dispatcher.InvokeShutdown();
         var joined = await Task.Run(() => thread.Join(TimeSpan.FromSeconds(2))).ConfigureAwait(false);
         if (!joined) _log.Warn("output", "The output thread did not stop within 2 s; continuing.");
+        await Task.Run(_pictures.Dispose).ConfigureAwait(false);
     }
 
     private void ThreadMain(TaskCompletionSource ready)
@@ -207,7 +216,10 @@ public sealed class OutputHost : IOutputSurface, IFramePulse
 
     private void CreateWindow()
     {
-        var services = new SurfaceServices(_engine, _documents, _settings, _documentFactory, _geometryBuilder, _log, () => State.Geometry);
+        var services = new SurfaceServices(_engine, _documents, _settings, _documentFactory, _geometryBuilder, _log, () => State.Geometry)
+        {
+            Pictures = _pictures,
+        };
         _surface = new PrompterSurface("output", services, snapToPixels: true);
         _guard = new DisplaySleepGuard();
         if (_options.Headless) return;
@@ -451,8 +463,8 @@ public sealed class OutputHost : IOutputSurface, IFramePulse
         // Allocation-free: a cast, a clock lookup, three lock-free reads and one transform update.
         if (!_clock.TryMap(((RenderingEventArgs)e).RenderingTime, Stopwatch.GetTimestamp(), out var timestamp)) return;
         _engine.Tick(timestamp);
-        var position = _engine.ReadPosition();
-        _surface!.SetPosition(position);
+        var position = _engine.ReadPosition(out var geometry);
+        _surface!.SetPosition(position, geometry);
         _stats?.Record(timestamp, moving: position != _lastStatsPosition);
         _lastStatsPosition = position;
         if (position != _lastPulsePosition || timestamp - _lastPulseTimestamp > HeartbeatTicks)
@@ -478,7 +490,11 @@ public sealed class OutputHost : IOutputSurface, IFramePulse
             _state = next;
         }
 
-        if (next.Geometry != previous.Geometry) _surface?.RequestRebuild();
+        if (next.Geometry != previous.Geometry)
+        {
+            _pictures.Request();
+            _surface?.RequestRebuild();
+        }
 
         var dispatcher = _dispatcher;
         if (dispatcher is null || dispatcher.CheckAccess())

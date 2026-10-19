@@ -75,7 +75,7 @@ public class PreviewTests
 
         // Same text-area width and font size the output computes: identical line breaks.
         var area = TypographyMath.ComputeTextArea(OutputGeometry.Default1080, rig.Settings.Current.Margins, rig.Settings.Current.Text, rig.Settings.Current.Output);
-        Assert.Equal(area.Width, surface.Host.Width, 6);
+        Assert.Equal(area.Width, surface.Presenter.Picture!.Area.Width, 6);
         Assert.Equal(area.BaseFontSize, rig.Factory.LastStyle!.BaseFontSize, 6);
     }
 
@@ -163,6 +163,26 @@ public class PreviewTests
         Assert.Equal(20.0 / 1920, m.Right, 9);
         Assert.Equal(100.0 / 1080, m.Top, 9);
         Assert.Equal(80.0 / 1080, m.Bottom, 9);
+    }
+
+    [WpfFact]
+    public void MarginDrag_MovesTheOverlayAtOnce_ButChangesTheLayoutOnlyOnRelease()
+    {
+        var rig = new Rig();
+        var before = rig.Settings.Current.Margins;
+        var changes = 0;
+        rig.Settings.Changed += (_, _) => changes++;
+
+        rig.Preview.DragForTest(PreviewHandle.Left, rig.ControlPoint(150, 500), snap: false, release: false);
+        rig.Preview.DragForTest(PreviewHandle.Left, rig.ControlPoint(180, 500), snap: false, release: false);
+        rig.Preview.DragForTest(PreviewHandle.Left, rig.ControlPoint(200, 500), snap: false, release: false);
+        Assert.Equal(0, changes);                                        // no relayout per mouse move
+        Assert.Equal(before, rig.Settings.Current.Margins);
+        Assert.Equal(200, rig.Preview.OverlayAreaForTest.Left, 6);       // but the overlay follows the pointer
+
+        rig.Preview.DragForTest(PreviewHandle.Left, rig.ControlPoint(200, 500), snap: false);   // release
+        Assert.Equal(1, changes);
+        Assert.Equal(200.0 / 1920, rig.Settings.Current.Margins.Left, 9);
     }
 
     [WpfFact]
@@ -280,7 +300,7 @@ public class PreviewTests
         Assert.True(output.HasPulseSubscribers);
 
         // A pulse from the output thread repaints the preview at the engine's position, without the preview ticking.
-        var translate = (TranslateTransform)preview.Surface!.Host.RenderTransform;
+        var translate = (TranslateTransform)preview.Surface!.Presenter.RenderTransform;
         engine.SetPosition(321);
         var ticksBefore = engine.Ticks + engine.StaleTicks;
         await Task.Run(output.Pulse);

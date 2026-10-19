@@ -56,6 +56,7 @@ public sealed class PrompterPreview : Control
     private int _stateRefreshPending;
     private PreviewHandle _hover;
     private PreviewHandle _drag;
+    private MarginSettings? _pendingMargins;   // a margin drag in progress: applied on release
     private readonly Action _refreshAction;
 
     public PrompterPreview()
@@ -85,9 +86,13 @@ public sealed class PrompterPreview : Control
         if (_services is not null) Detach();
         _services = services;
 
+        // The output host's layout thread draws the script once for both surfaces; without it the preview lays out itself.
         var surfaceServices = new SurfaceServices(
             services.Engine, services.Documents, services.Settings, services.DocumentFactory, services.GeometryBuilder,
-            services.Log, () => services.Output.State.Geometry);
+            services.Log, () => services.Output.State.Geometry)
+        {
+            Pictures = (services.Output as IPictureSourceProvider)?.Pictures,
+        };
         _surface = new PrompterSurface("preview", surfaceServices, snapToPixels: false);
         _surface.Rebuilt += OnSurfaceRebuilt;
         _scene.SetSurface(_surface);
@@ -255,8 +260,8 @@ public sealed class PrompterPreview : Control
             ApplyDriveMode();
         }
 
-        var position = services.Engine.ReadPosition();
-        surface.SetPosition(position);
+        var position = services.Engine.ReadPosition(out var geometry);
+        surface.SetPosition(position, geometry);
         _stats?.Record(Stopwatch.GetTimestamp(), moving: position != _lastStatsPosition);
         _lastStatsPosition = position;
     }
@@ -274,8 +279,8 @@ public sealed class PrompterPreview : Control
         if (_outputRendering) services.Engine.TickIfStale(now, 0.05);
         else services.Engine.TickIfStale(frame, 0.001);
 
-        var position = services.Engine.ReadPosition();
-        surface.SetPosition(position);
+        var position = services.Engine.ReadPosition(out var geometry);
+        surface.SetPosition(position, geometry);
         _stats?.Record(frame, moving: position != _lastStatsPosition);
         _lastStatsPosition = position;
     }
@@ -318,8 +323,17 @@ public sealed class PrompterPreview : Control
     {
         var surface = _surface;
         if (surface is null) return;
+
+        // While a margin is being dragged the overlay shows where it will be; the script is laid out again on release.
+        var area = surface.TextArea;
+        if (_pendingMargins is { } margins && _services is { } services)
+        {
+            var settings = services.Settings.Current;
+            area = TypographyMath.ComputeTextArea(surface.Output, margins, settings.Text, settings.Output);
+        }
+
         _scene.Overlay.State = new PreviewVisualState(
-            _scene.Layout, surface.TextArea, surface.Output.WidthDip, surface.Output.HeightDip,
+            _scene.Layout, area, surface.Output.WidthDip, surface.Output.HeightDip,
             _outputState.IsLive, _outputState.IsBlank, _hover, _drag);
     }
 
@@ -395,11 +409,22 @@ public sealed class PrompterPreview : Control
         if (_drag == PreviewHandle.None) return;
         _drag = PreviewHandle.None;
         if (IsMouseCaptured) ReleaseMouseCapture();
+        CommitMargins();
         PushVisualState();
     }
 
-    /// <summary>Test hook: behave as if <paramref name="handle"/> were being dragged to <paramref name="controlPoint"/>.</summary>
-    internal void DragForTest(PreviewHandle handle, Point controlPoint, bool snap)
+    /// <summary>A margin drag lays the script out again once, on release (live-edit fix: applying every mouse move made
+    /// the layout thread reflow the whole script, and the output's text with it, many times a second).</summary>
+    private void CommitMargins()
+    {
+        if (_pendingMargins is not { } margins) return;
+        _pendingMargins = null;
+        _services?.Settings.Update(s => s.Margins == margins ? s : s with { Margins = margins });
+    }
+
+    /// <summary>Test hook: behave as if <paramref name="handle"/> were dragged to <paramref name="controlPoint"/> and,
+    /// unless <paramref name="release"/> is false, released there.</summary>
+    internal void DragForTest(PreviewHandle handle, Point controlPoint, bool snap, bool release = true)
     {
         var previous = _drag;
         _drag = handle;
@@ -410,8 +435,13 @@ public sealed class PrompterPreview : Control
         finally
         {
             _drag = previous;
+            if (release) CommitMargins();
+            PushVisualState();
         }
     }
+
+    /// <summary>The text area the overlay shows (tests).</summary>
+    internal TextArea OverlayAreaForTest => _scene.Overlay.State.Area;
 
     /// <summary>The handle under a control-space point (tests).</summary>
     internal PreviewHandle HitTestForTest(Point controlPoint) =>
@@ -430,11 +460,12 @@ public sealed class PrompterPreview : Control
         if (PreviewMath.ToEdge(_drag) is { } edge)
         {
             var px = PreviewMath.EdgePixels(edge, point, output, snap);
-            services.Settings.Update(s =>
+            var margins = MarginMath.SetEdgePixels(_pendingMargins ?? services.Settings.Current.Margins, edge, px, output.SizePx);
+            if (margins != (_pendingMargins ?? services.Settings.Current.Margins))
             {
-                var margins = MarginMath.SetEdgePixels(s.Margins, edge, px, output.SizePx);
-                return margins == s.Margins ? s : s with { Margins = margins };
-            });
+                _pendingMargins = margins;
+                PushVisualState();
+            }
         }
         else if (_drag == PreviewHandle.ReadingLine)
         {

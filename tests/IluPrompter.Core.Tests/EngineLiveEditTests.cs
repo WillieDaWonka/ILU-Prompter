@@ -271,6 +271,48 @@ public class EngineLiveEditTests
     }
 
     [Fact]
+    public void ReadPositionWithGeometry_IsConsistent_WhileAnotherThreadInstallsLayouts()
+    {
+        var script = ScriptLayout.Script();
+        var edited = script.ToList();
+        edited.InsertRange(4, ScriptLayout.Script(9).Select(t => "new " + t));
+        var a = ScriptLayout.Build(script, 1);
+        var b = ScriptLayout.Build(edited, 2);
+        var h = new EngineHarness(a);
+        h.Apply(EngineCommand.SeekToOffset(a.LineTops[a.FindLineForAnchor(new DocumentAnchor(30, 40))] + 30 - h.R));
+        var expected = ReadingView.Of(a, h.Pos, h.R);
+
+        var stop = false;
+        var writer = new Thread(() =>
+        {
+            for (var i = 0; i < 4000 && !Volatile.Read(ref stop); i++) h.Engine.SetLayout(i % 2 == 0 ? b : a, h.Viewport);
+            Volatile.Write(ref stop, true);
+        });
+        writer.Start();
+        var reads = 0;
+        while (!Volatile.Read(ref stop))
+        {
+            var p = h.Engine.ReadPosition(out var g);
+            var view = ReadingView.Of(g!, p, h.R);
+            Assert.True(view.SameTextAs(expected), $"read {reads}: '{view.LineText}' in {g!.LayoutKey}");
+            reads++;
+        }
+
+        writer.Join();
+        Assert.True(reads > 0);
+    }
+
+    [Fact]
+    public void ReadPositionWithGeometry_DoesNotAllocate()
+    {
+        var h = new EngineHarness(ScriptLayout.Build(ScriptLayout.Script(), 1));
+        _ = h.Engine.ReadPosition(out _);
+        var before = GC.GetAllocatedBytesForCurrentThread();
+        for (var i = 0; i < 10_000; i++) _ = h.Engine.ReadPosition(out _);
+        Assert.Equal(0, GC.GetAllocatedBytesForCurrentThread() - before);
+    }
+
+    [Fact]
     public void AtEnd_StaysAtEndThroughAnEdit()
     {
         var live = new Live();

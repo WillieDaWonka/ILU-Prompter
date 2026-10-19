@@ -2,8 +2,6 @@ using System.Diagnostics;
 using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Documents;
-using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Shapes;
 using System.Windows.Threading;
@@ -22,7 +20,11 @@ internal sealed record SurfaceServices(
     IOutputDocumentFactory DocumentFactory,
     ILayoutGeometryBuilder GeometryBuilder,
     IAppLog Log,
-    Func<OutputGeometry> GetOutputGeometry);
+    Func<OutputGeometry> GetOutputGeometry)
+{
+    /// <summary>The shared layout thread (ARCHITECTURE §3). Null: the surface lays out on its own thread, synchronously.</summary>
+    public IPictureSource? Pictures { get; init; }
+}
 
 /// <summary>Raised on the output thread after each frame in which the scroll position changed (and as a heartbeat at least
 /// four times a second while rendering). Lets the preview follow the output without its own per-frame Rendering
@@ -50,10 +52,17 @@ internal interface IOutputRenderer
 }
 
 /// <summary>
-/// The prompter picture at the output's logical size (output DIPs): script-paper background, a clipped text area
-/// hosting a read-only RichTextBox that is moved with a pre-allocated <see cref="TranslateTransform"/>, the reading-line
-/// markers and the optional dim band. One instance per thread (output thread, UI thread for the preview); each owns its
-/// FlowDocument built from the same snapshot, so line breaks are identical (ARCHITECTURE §3).
+/// The prompter picture at the output's logical size (output DIPs): script-paper background, a clipped text area showing
+/// the frozen picture of the laid-out script (<see cref="PicturePresenter"/>) moved with a pre-allocated
+/// <see cref="TranslateTransform"/>, the reading-line markers and the optional dim band. One instance per thread (output
+/// thread, UI thread for the preview); both display the same picture from the layout thread, so line breaks are
+/// identical (ARCHITECTURE §3) and neither thread ever lays the script out.
+/// <para>
+/// Installing a picture, its frame and <c>engine.SetLayout</c> happen in one dispatcher operation, so the first frame of
+/// a new layout already has the reading line on the same text. While the engine's layout is not this surface's picture
+/// (the other surface installed a new one a frame earlier), positions are mapped onto this picture
+/// (<see cref="LayoutMapping"/>), so neither surface ever shows a frame at the wrong place.
+/// </para>
 /// </summary>
 internal sealed class PrompterSurface : UserControl, IOutputRenderer
 {
@@ -62,25 +71,28 @@ internal sealed class PrompterSurface : UserControl, IOutputRenderer
 
     private readonly string _name;
     private readonly SurfaceServices _s;
+    private readonly IPictureSource _pictures;
     private readonly bool _snapToPixels;
     private readonly Canvas _root = new();
     private readonly Canvas _textArea = new() { ClipToBounds = true };
-    private readonly RichTextBox _host = new();
+    private readonly PicturePresenter _presenter = new();
     private readonly TranslateTransform _translate = new();
     private readonly Rectangle _dim = new() { IsHitTestVisible = false, Visibility = Visibility.Collapsed };
     private readonly Path _leftMarker = new() { IsHitTestVisible = false, Visibility = Visibility.Collapsed };
     private readonly Path _rightMarker = new() { IsHitTestVisible = false, Visibility = Visibility.Collapsed };
     private readonly Action _rebuildAction;
+    private readonly EventHandler _pictureReady;
 
     private int _rebuildPending;
     private bool _started;
-    private string? _contentKey;
+    private PromptPicture? _picture;
     private TextArea _area;
     private OutputGeometry _output;
-    private LayoutGeometry? _geometry;
     private double _lastPosition = double.NaN;
     private int _stillFrames;
     private bool _animatedHinting = true;
+    private LayoutGeometry? _mapFrom;
+    private AnchorMap _map = AnchorMap.Identity;
 
     public PrompterSurface(string name, SurfaceServices services, bool snapToPixels)
     {
@@ -88,6 +100,9 @@ internal sealed class PrompterSurface : UserControl, IOutputRenderer
         _s = services;
         _snapToPixels = snapToPixels;
         _rebuildAction = OnRebuildQueued;
+        _pictureReady = (_, _) => RequestRebuild();
+        _pictures = services.Pictures ?? new InlinePictureSource(services.Documents, services.Settings, services.DocumentFactory,
+            services.GeometryBuilder, services.Log, services.GetOutputGeometry, "surface:" + name);
 
         var paper = ThemeResources.GetBrush("script-paper");
         var markerBrush = ThemeResources.GetBrush("reading-marker");
@@ -102,8 +117,10 @@ internal sealed class PrompterSurface : UserControl, IOutputRenderer
         _root.Background = paper;
         _root.SnapsToDevicePixels = false;
 
-        ConfigureHost();
-        _textArea.Children.Add(_host);
+        _presenter.RenderTransform = _translate;
+        Canvas.SetLeft(_presenter, 0);
+        Canvas.SetTop(_presenter, 0);
+        _textArea.Children.Add(_presenter);
         _root.Children.Add(_textArea);
         _root.Children.Add(_dim);
         _root.Children.Add(_leftMarker);
@@ -123,25 +140,27 @@ internal sealed class PrompterSurface : UserControl, IOutputRenderer
 
     public FrameworkElement View => this;
 
-    /// <summary>The text area (output DIPs) used by the last rebuild.</summary>
+    /// <summary>The text area (output DIPs) in use.</summary>
     public TextArea TextArea => _area;
 
-    /// <summary>The output size (DIPs and pixels) used by the last rebuild.</summary>
+    /// <summary>The output size (DIPs and pixels) in use.</summary>
     public OutputGeometry Output => _output;
 
-    /// <summary>Geometry tables of the last successful document build; null before the first.</summary>
-    public LayoutGeometry? Geometry => _geometry;
+    /// <summary>Geometry tables of the picture on show; null before the first.</summary>
+    public LayoutGeometry? Geometry => _picture?.Geometry;
 
-    public string? LayoutKey => _geometry?.LayoutKey;
+    public string? LayoutKey => _picture?.Geometry.LayoutKey;
 
-    /// <summary>How many times the FlowDocument was rebuilt (not counting viewport-only refreshes).</summary>
+    /// <summary>How many new pictures were installed (not counting viewport-only refreshes).</summary>
     public int DocumentBuildCount { get; private set; }
 
     /// <summary>How many times <see cref="Rebuild"/> ran.</summary>
     public int RebuildCount { get; private set; }
 
-    /// <summary>The hosted read-only text box (tests inspect its layout).</summary>
-    internal RichTextBox Host => _host;
+    /// <summary>The element showing the picture (tests inspect it).</summary>
+    internal PicturePresenter Presenter => _presenter;
+
+    internal IPictureSource Pictures => _pictures;
 
     /// <summary>Raised on the surface's thread after every rebuild (the preview redraws its overlay).</summary>
     public event EventHandler? Rebuilt;
@@ -150,8 +169,9 @@ internal sealed class PrompterSurface : UserControl, IOutputRenderer
     {
         if (_started) return;
         _started = true;
-        _s.Documents.SnapshotPublished += OnSnapshotPublished;
         _s.Settings.Changed += OnSettingsChanged;
+        if (_pictures.IsAutonomous) _pictures.PictureReady += _pictureReady;   // the layout thread says when it has a picture
+        else _s.Documents.SnapshotPublished += OnSnapshotPublished;            // an inline source builds when asked
         RequestRebuild();
     }
 
@@ -159,8 +179,9 @@ internal sealed class PrompterSurface : UserControl, IOutputRenderer
     {
         if (!_started) return;
         _started = false;
-        _s.Documents.SnapshotPublished -= OnSnapshotPublished;
         _s.Settings.Changed -= OnSettingsChanged;
+        if (_pictures.IsAutonomous) _pictures.PictureReady -= _pictureReady;
+        else _s.Documents.SnapshotPublished -= OnSnapshotPublished;
     }
 
     public void RequestRebuild()
@@ -188,16 +209,18 @@ internal sealed class PrompterSurface : UserControl, IOutputRenderer
     }
 
     /// <summary>
-    /// Synchronous rebuild on the surface's thread: text area, then (only when something that changes the look or the
-    /// line breaks changed) a new FlowDocument, host layout and geometry tables, then <c>engine.SetLayout</c>.
-    /// Never throws; failures are logged and the previous picture stays.
+    /// Synchronous, on the surface's thread: asks the picture source for the current inputs (an inline source lays out
+    /// now; the layout thread answers later with <c>PictureReady</c>), then installs the newest picture, the frame that
+    /// goes with it and <c>engine.SetLayout</c>, and repositions. Cheap unless the source is inline. Never throws.
     /// </summary>
     public void Rebuild()
     {
         var timer = Stopwatch.StartNew();
+        var installed = false;
         try
         {
-            RebuildCore();
+            _pictures.Request();
+            installed = Apply();
         }
         catch (Exception ex)
         {
@@ -205,63 +228,116 @@ internal sealed class PrompterSurface : UserControl, IOutputRenderer
         }
 
         RebuildCount++;
-        if (timer.Elapsed.TotalMilliseconds > SlowRebuildMs)
+        var ms = timer.Elapsed.TotalMilliseconds;
+        if (ms > SlowRebuildMs)
         {
             _s.Log.Warn("surface:" + _name, string.Create(CultureInfo.InvariantCulture,
-                $"Slow rebuild: {timer.Elapsed.TotalMilliseconds:0} ms ({_geometry?.LineCount ?? 0} lines, key {_geometry?.LayoutKey})"));
+                $"Slow rebuild: {ms:0} ms ({_picture?.Geometry.LineCount ?? 0} lines, key {_picture?.Geometry.LayoutKey})"));
+        }
+        else if (installed && _s.Log.DiagnosticsEnabled)
+        {
+            _s.Log.Trace("surface:" + _name + ":install", string.Create(CultureInfo.InvariantCulture,
+                $"picture installed in {ms:0.0} ms ({_presenter.AttachedCount} blocks attached, {_presenter.ReusedCount} reused, key {_picture?.Geometry.LayoutKey})"));
         }
 
         Rebuilt?.Invoke(this, EventArgs.Empty);
     }
 
-    private void RebuildCore()
+    /// <summary>Install the newest picture (if new) with its frame, tell the engine, reposition. True if a picture was installed.</summary>
+    private bool Apply()
     {
-        var snapshot = _s.Documents.Current;
+        var picture = _pictures.Current;
         var settings = _s.Settings.Current;
         var output = _s.GetOutputGeometry();
         var area = TypographyMath.ComputeTextArea(output, settings.Margins, settings.Text, settings.Output);
-        var layoutKey = SurfaceLayout.ComputeLayoutKey(snapshot.Version, area, settings.Text, settings.Output);
-        var contentKey = SurfaceLayout.ComputeContentKey(layoutKey, settings.Text);
+        var installed = false;
+
+        if (picture is not null)
+        {
+            // The frame must match the picture: until the picture for new margins or a new size arrives, keep the size it
+            // was laid out for (only the reading line, which never changes the layout, follows the settings at once).
+            var key = SurfaceLayout.ComputeLayoutKey(picture.Geometry.SnapshotVersion, area, settings.Text, settings.Output);
+            if (!string.Equals(key, picture.Geometry.LayoutKey, StringComparison.Ordinal))
+            {
+                var fraction = area.Height > 0 ? area.ReadingLineY / area.Height : 0.33;
+                area = picture.Area with { ReadingLineY = picture.Area.Height * fraction };
+                output = picture.Output;
+            }
+
+            if (!ReferenceEquals(picture, _picture))
+            {
+                var changedContent = _picture is null || !string.Equals(_picture.ContentKey, picture.ContentKey, StringComparison.Ordinal);
+                _picture = picture;
+                _mapFrom = null;
+                if (changedContent) DocumentBuildCount++;
+                installed = true;
+                TraceLineTops(picture.Geometry);
+            }
+        }
 
         _output = output;
         _area = area;
         ApplyFrame(output, area, settings);
 
-        if (!string.Equals(contentKey, _contentKey, StringComparison.Ordinal))
+        var position = _s.Engine.ReadPosition();
+        if (_picture is not null)
         {
-            var style = BuildStyle(area, settings);
-            var document = _s.DocumentFactory.Create(snapshot, style);
-            _host.Document = document;
-            LayoutHost(area.Width);
-            _geometry = _s.GeometryBuilder.Build(document, new GeometryBuildOptions(layoutKey, snapshot, area.BaseLineHeight));
-            _contentKey = contentKey;
-            DocumentBuildCount++;
-            TraceLineTops(_geometry);
+            _s.Engine.SetLayout(_picture.Geometry, area.ToViewport());
+            position = _s.Engine.ReadPosition(out var engineGeometry);
+            position = MapFromEngine(position, engineGeometry);
+            if (installed) _presenter.SetPicture(_picture, position, area.Height);
         }
-        else
-        {
-            LayoutHost(area.Width);
-        }
-
-        if (_geometry is not null) _s.Engine.SetLayout(_geometry, area.ToViewport());
 
         _lastPosition = double.NaN;
-        SetPosition(_s.Engine.ReadPosition());
+        ShowPosition(position);
+        return installed;
     }
 
-    /// <summary>Per frame. Moving: exact sub-pixel Y with animated hinting. Still for 2 frames: Y snapped to a whole
-    /// device pixel and fixed hinting, so static text is razor sharp (RESEARCH §4.1).</summary>
-    public void SetPosition(double positionDip)
+    /// <summary>Per frame (tests and simple callers): a position already in this surface's layout.</summary>
+    public void SetPosition(double positionDip) => ShowPosition(positionDip);
+
+    /// <summary>Per frame: the engine's position and the geometry it is in (<c>IScrollEngine.ReadPosition(out)</c>). If that
+    /// is not this surface's picture yet, the position is mapped onto the picture first. Allocation-free except once
+    /// per layout change when no map was prepared.</summary>
+    public void SetPosition(double positionDip, LayoutGeometry? engineGeometry) => ShowPosition(MapFromEngine(positionDip, engineGeometry));
+
+    private double MapFromEngine(double position, LayoutGeometry? engineGeometry)
+    {
+        var mine = _picture?.Geometry;
+        if (engineGeometry is null || mine is null || ReferenceEquals(engineGeometry, mine)
+            || string.Equals(engineGeometry.LayoutKey, mine.LayoutKey, StringComparison.Ordinal))
+        {
+            return position;
+        }
+
+        if (!ReferenceEquals(_mapFrom, engineGeometry))
+        {
+            // Usually the newest picture is the engine's and was built with the map back to this one.
+            var newest = _pictures.Current;
+            _map = newest is not null && ReferenceEquals(newest.Geometry, engineGeometry) && ReferenceEquals(newest.PreviousGeometry, mine) && newest.MapToPrevious is not null
+                ? newest.MapToPrevious
+                : AnchorMap.Between(engineGeometry, mine);
+            _mapFrom = engineGeometry;
+        }
+
+        var mapped = LayoutMapping.MapPosition(engineGeometry, mine, _map, position, _area.ReadingLineY);
+        return double.IsFinite(mapped) ? mapped : position;
+    }
+
+    /// <summary>Moving: exact sub-pixel Y with animated hinting. Still for 2 frames: Y snapped to a whole device pixel and
+    /// fixed hinting, so static text is razor sharp (RESEARCH §4.1).</summary>
+    private void ShowPosition(double positionDip)
     {
         if (positionDip != _lastPosition)
         {
             _lastPosition = positionDip;
             _stillFrames = 0;
             _translate.Y = -positionDip;
+            _presenter.UpdateViewport(positionDip, _area.Height);
             if (!_animatedHinting)
             {
                 _animatedHinting = true;
-                TextOptions.SetTextHintingMode(_host, TextHintingMode.Animated);
+                _presenter.SetHinting(TextHintingMode.Animated);
             }
 
             return;
@@ -273,48 +349,8 @@ internal sealed class PrompterSurface : UserControl, IOutputRenderer
             var absolute = Math.Round((_area.Top - positionDip) * px) / px;
             _translate.Y = absolute - _area.Top;
             _animatedHinting = false;
-            TextOptions.SetTextHintingMode(_host, TextHintingMode.Fixed);
+            _presenter.SetHinting(TextHintingMode.Fixed);
         }
-    }
-
-    private void ConfigureHost()
-    {
-        _host.IsReadOnly = true;
-        _host.IsReadOnlyCaretVisible = false;
-        _host.Focusable = false;
-        _host.IsHitTestVisible = false;
-        _host.IsTabStop = false;
-        _host.IsUndoEnabled = false;
-        _host.IsDocumentEnabled = false;
-        _host.AllowDrop = false;
-        _host.BorderThickness = new Thickness(0);
-        _host.Padding = new Thickness(0);
-        _host.Margin = new Thickness(0);
-        _host.Background = Brushes.Transparent;
-        _host.FocusVisualStyle = null;
-        _host.IsInactiveSelectionHighlightEnabled = false;
-        _host.SelectionOpacity = 0;
-        _host.CaretBrush = Brushes.Transparent;
-        _host.HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled;
-        _host.VerticalScrollBarVisibility = ScrollBarVisibility.Disabled;
-        _host.HorizontalAlignment = HorizontalAlignment.Left;
-        _host.VerticalAlignment = VerticalAlignment.Top;
-        _host.RenderTransform = _translate;
-        TextOptions.SetTextFormattingMode(_host, TextFormattingMode.Ideal);
-        TextOptions.SetTextRenderingMode(_host, TextRenderingMode.Grayscale);
-        TextOptions.SetTextHintingMode(_host, TextHintingMode.Animated);   // not inherited as a property value: set where it is used
-        _host.UndoLimit = 0;
-        SpellCheck.SetIsEnabled(_host, false);
-        Canvas.SetLeft(_host, 0);
-        Canvas.SetTop(_host, 0);
-    }
-
-    private void LayoutHost(double width)
-    {
-        _host.Width = width;
-        _host.Measure(new Size(width, double.PositiveInfinity));
-        _host.Arrange(new Rect(0, 0, width, _host.DesiredSize.Height));
-        _host.UpdateLayout();
     }
 
     /// <summary>Size, text-area position, markers and dim band: everything cheap that depends on margins and the reading line.</summary>
@@ -393,34 +429,6 @@ internal sealed class PrompterSurface : UserControl, IOutputRenderer
         geometry.Freeze();
         path.Data = geometry;
         path.Visibility = Visibility.Visible;
-    }
-
-    private static OutputTextStyle BuildStyle(TextArea area, PrompterSettings settings)
-    {
-        var text = settings.Text;
-        var highlights = new Dictionary<Color, Color>();
-        foreach (var option in ThemeResources.Highlights)
-        {
-            if (option.InkToken is not null && ThemeResources.TryGetColor(option.Token, out var bg) && ThemeResources.TryGetColor(option.InkToken, out var ink))
-            {
-                highlights[bg] = ink;
-            }
-        }
-
-        return new OutputTextStyle(
-            ThemeResources.ScriptFont(text.FontFace),
-            FontWeight.FromOpenTypeWeight(Math.Clamp(text.FontWeight, 1, 999)),
-            area.BaseFontSize,
-            text.LineSpacing,
-            text.ParagraphGapLines,
-            settings.Output.Alignment == TextAlignmentSetting.Centre ? TextAlignment.Center : TextAlignment.Left,
-            ThemeResources.TryGetColor(text.DefaultInk, out var defaultInk) ? defaultInk : ThemeResources.GetColor("ink-white"),
-            ThemeResources.GetColor("ink-grey"),
-            ThemeResources.GetColor("end-marker"),
-            ThemeResources.GetColor("line-strong"),
-            settings.Output.ShowSectionNames,
-            settings.Editor.SectionMarker,
-            highlights);
     }
 
     private void TraceLineTops(LayoutGeometry geometry)

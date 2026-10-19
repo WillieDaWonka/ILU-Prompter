@@ -129,6 +129,16 @@ public interface IScrollEngine
     /// The text area shows document Y in [pos, pos + TextAreaHeight).</summary>
     double ReadPosition();
 
+    /// <summary>The latest position together with the geometry it is in, read consistently (lock-free, allocation-free,
+    /// any thread). A surface whose own picture is a different layout maps the position onto it (LayoutMapping), so the
+    /// text on the reading line never jumps while the two surfaces install a new layout a frame apart.
+    /// Added 19 Oct 2026 (live-edit fix); the default suits test doubles.</summary>
+    double ReadPosition(out LayoutGeometry? geometry)
+    {
+        geometry = Geometry;
+        return ReadPosition();
+    }
+
     /// <summary>Latest status (volatile reference read, any thread).</summary>
     EngineStatus Status { get; }
 
