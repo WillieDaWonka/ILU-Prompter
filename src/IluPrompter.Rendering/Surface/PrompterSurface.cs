@@ -292,6 +292,9 @@ internal sealed class PrompterSurface : UserControl, IOutputRenderer
         _host.HorizontalAlignment = HorizontalAlignment.Left;
         _host.VerticalAlignment = VerticalAlignment.Top;
         _host.RenderTransform = _translate;
+        TextOptions.SetTextFormattingMode(_host, TextFormattingMode.Ideal);
+        TextOptions.SetTextRenderingMode(_host, TextRenderingMode.Grayscale);
+        TextOptions.SetTextHintingMode(_host, TextHintingMode.Animated);   // not inherited as a property value: set where it is used
         _host.UndoLimit = 0;
         SpellCheck.SetIsEnabled(_host, false);
         Canvas.SetLeft(_host, 0);

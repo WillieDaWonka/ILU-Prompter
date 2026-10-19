@@ -117,6 +117,7 @@ internal sealed class FakeDocumentFactory : IOutputDocumentFactory
             LineHeight = style.BaseFontSize * style.LineSpacing,
             LineStackingStrategy = LineStackingStrategy.BlockLineHeight,
             TextAlignment = style.Alignment,
+            Foreground = new System.Windows.Media.SolidColorBrush(style.Ink),
         };
         for (var i = 0; i < Paragraphs; i++)
         {

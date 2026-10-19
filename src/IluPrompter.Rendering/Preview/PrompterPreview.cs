@@ -193,7 +193,7 @@ public sealed class PrompterPreview : Control
 
         if (_drag != PreviewHandle.None)
         {
-            if (e.LeftButton == MouseButtonState.Pressed) ApplyDrag(p);
+            if (e.LeftButton == MouseButtonState.Pressed) ApplyDrag(p, (Keyboard.Modifiers & ModifierKeys.Shift) != 0);
             return;
         }
 
@@ -253,7 +253,28 @@ public sealed class PrompterPreview : Control
         PushVisualState();
     }
 
-    private void ApplyDrag(Point controlPoint)
+    /// <summary>Test hook: behave as if <paramref name="handle"/> were being dragged to <paramref name="controlPoint"/>.</summary>
+    internal void DragForTest(PreviewHandle handle, Point controlPoint, bool snap)
+    {
+        var previous = _drag;
+        _drag = handle;
+        try
+        {
+            ApplyDrag(controlPoint, snap);
+        }
+        finally
+        {
+            _drag = previous;
+        }
+    }
+
+    /// <summary>The handle under a control-space point (tests).</summary>
+    internal PreviewHandle HitTestForTest(Point controlPoint) =>
+        _surface is null
+            ? PreviewHandle.None
+            : PreviewMath.HitTest(controlPoint, _scene.Layout, _surface.TextArea, _surface.Output.WidthDip, _surface.Output.HeightDip);
+
+    private void ApplyDrag(Point controlPoint, bool snap)
     {
         var services = _services;
         var surface = _surface;
@@ -261,8 +282,6 @@ public sealed class PrompterPreview : Control
 
         var output = surface.Output;
         var point = PreviewMath.ToOutput(controlPoint, _scene.Layout);
-        var snap = (Keyboard.Modifiers & ModifierKeys.Shift) != 0;
-
         if (PreviewMath.ToEdge(_drag) is { } edge)
         {
             var px = PreviewMath.EdgePixels(edge, point, output, snap);
