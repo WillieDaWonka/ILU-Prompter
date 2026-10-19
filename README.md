@@ -6,6 +6,15 @@ Xbox controller, or a Contour ShuttleXpress / ShuttlePRO jog-shuttle.
 
 WPF on .NET 8 (`net8.0-windows`), self-contained folder build, no installer, no admin.
 
+## Running it
+
+- **Double-click `run_app.bat`.** It builds a Release copy and starts it. With a second display extended, press
+  **F11** (or *Show output*) to put the prompt on it.
+- **Only one screen?** Double-click `run_app_single_screen.bat`; the output opens as a window on this screen.
+- **Visual Studio:** open `IluPrompter.sln`, right-click **IluPrompter.App** › *Set as Startup Project*, press F5.
+- **For a show machine:** run the publish command below and copy the `publish\ILUPrompter` folder; start
+  `ILUPrompter.exe` from it (no .NET install needed).
+
 ## Build, test, run
 
 ```powershell
