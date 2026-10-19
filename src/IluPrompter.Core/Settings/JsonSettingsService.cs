@@ -203,39 +203,54 @@ public sealed class JsonSettingsService : ISettingsService, IDisposable
     }
 
     /// <summary>Serialise to settings.json.tmp, then File.Replace (leaving settings.json.bak) or File.Move.
+    /// A sharing violation can happen when a scanner or indexer touches the file, so it is retried briefly.
     /// IO problems are logged, never thrown: a failed save must not take the app down.</summary>
     private void WriteCurrent()
     {
-        try
+        for (var attempt = 1; ; attempt++)
         {
-            var bytes = JsonSerializer.SerializeToUtf8Bytes(Current, IluJson.Options);
-            var directory = Path.GetDirectoryName(SettingsPath);
-            if (!string.IsNullOrEmpty(directory))
+            try
             {
-                Directory.CreateDirectory(directory);
+                WriteOnce();
+                Interlocked.Increment(ref _writeCount);
+                return;
             }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or NotSupportedException)
+            {
+                if (attempt >= 4 || ex is NotSupportedException)
+                {
+                    _log.Error("settings", "Saving settings.json failed.", ex);
+                    return;
+                }
 
-            var tmp = SettingsPath + ".tmp";
-            using (var stream = new FileStream(tmp, FileMode.Create, FileAccess.Write, FileShare.None))
-            {
-                stream.Write(bytes, 0, bytes.Length);
-                stream.Flush(flushToDisk: true);
+                Thread.Sleep(25 * attempt);
             }
-
-            if (File.Exists(SettingsPath))
-            {
-                File.Replace(tmp, SettingsPath, SettingsPath + ".bak");
-            }
-            else
-            {
-                File.Move(tmp, SettingsPath);
-            }
-
-            Interlocked.Increment(ref _writeCount);
         }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or NotSupportedException)
+    }
+
+    private void WriteOnce()
+    {
+        var bytes = JsonSerializer.SerializeToUtf8Bytes(Current, IluJson.Options);
+        var directory = Path.GetDirectoryName(SettingsPath);
+        if (!string.IsNullOrEmpty(directory))
         {
-            _log.Error("settings", "Saving settings.json failed.", ex);
+            Directory.CreateDirectory(directory);
+        }
+
+        var tmp = SettingsPath + ".tmp";
+        using (var stream = new FileStream(tmp, FileMode.Create, FileAccess.Write, FileShare.None))
+        {
+            stream.Write(bytes, 0, bytes.Length);
+            stream.Flush(flushToDisk: true);
+        }
+
+        if (File.Exists(SettingsPath))
+        {
+            File.Replace(tmp, SettingsPath, SettingsPath + ".bak");
+        }
+        else
+        {
+            File.Move(tmp, SettingsPath);
         }
     }
 
