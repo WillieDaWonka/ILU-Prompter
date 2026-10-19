@@ -11,6 +11,16 @@ public sealed class ImmediateUi : IUiThread
     public void Post(Action action) => action();
 }
 
+/// <summary>A millisecond clock the tests move by hand (starts well above zero: the input table treats 0 as "never").</summary>
+public sealed class TestClock
+{
+    public long Ms { get; set; } = 10_000;
+
+    public long Now() => Ms;
+
+    public void Advance(long ms) => Ms += ms;
+}
+
 public sealed class FakeSettings : ISettingsService
 {
     private PrompterSettings _current = PrompterSettings.Default;

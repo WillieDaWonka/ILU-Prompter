@@ -33,6 +33,7 @@ public partial class MainWindow : Window
     private SettingsWindow? _settingsWindow;
     private SettingsPageId _lastSettingsPage = SettingsPageId.Controller;
     private bool _devSized;
+    private bool _flyoutTracking;
 
     public MainWindow(
         MainViewModel model,
@@ -76,6 +77,8 @@ public partial class MainWindow : Window
         model.ExitRequested += (_, _) => Close();
         model.Sections.PropertyChanged += OnSectionsChanged;
         router.AppCommandRequested += OnAppCommandRequested;
+        model.Live.Panel.PropertyChanged += OnLivePanelChanged;
+        EditorArea.SizeChanged += (_, e) => model.Live.Panel.UpdateEditorWidth(e.NewSize.Width);
 
         _poll = new DispatcherTimer(DispatcherPriority.Background) { Interval = TimeSpan.FromMilliseconds(100) };
         _poll.Tick += OnPoll;
@@ -103,7 +106,11 @@ public partial class MainWindow : Window
 
     // ===== tiers =====
 
-    private void OnSizeChanged(object sender, SizeChangedEventArgs e) => ApplyTier(LayoutTiers.ForWidth(e.NewSize.Width));
+    private void OnSizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        ApplyTier(LayoutTiers.ForWidth(e.NewSize.Width));
+        _model.Live.Panel.OnWindowResized();   // a live panel flyout closes when the window changes size
+    }
 
     private void ApplyTier(LayoutTier tier)
     {
@@ -154,11 +161,10 @@ public partial class MainWindow : Window
         // A window that opened maximised and was never restored has an empty RestoreBounds (Left/Top = +Infinity,
         // Width/Height = -Infinity): keep the remembered normal bounds and store only the maximised flag.
         var valid = !bounds.IsEmpty && double.IsFinite(bounds.Left) && double.IsFinite(bounds.Top) && bounds.Width > 0 && bounds.Height > 0;
+        // Copied with "with", never rebuilt: the live panel's tab and hidden flag live in the same record.
         _settings.Update(s => s with
         {
-            ControlWindow = valid
-                ? new WindowSettings { Left = bounds.Left, Top = bounds.Top, Width = bounds.Width, Height = bounds.Height, IsMaximized = maximised }
-                : s.ControlWindow with { IsMaximized = maximised },
+            ControlWindow = WindowBounds.Apply(s.ControlWindow, bounds.Left, bounds.Top, bounds.Width, bounds.Height, maximised, valid),
         });
     }
 
@@ -180,7 +186,7 @@ public partial class MainWindow : Window
         base.OnPreviewGotKeyboardFocus(e);
         if (e.NewFocus is not DependencyObject target) return;
         if (IsWithin(EditorArea.Editor, target)) _keyMode.Mode = KeyMode.Typing;
-        else if (IsWithin(LiveArea, target) || IsWithin(SectionsWide, target) || IsWithin(SectionsRail, target) || IsWithin(SectionsFlyout, target))
+        else if (IsWithin(LiveArea, target) || IsWithin(PanelFlyout, target) || IsWithin(SectionsWide, target) || IsWithin(SectionsRail, target) || IsWithin(SectionsFlyout, target))
             _keyMode.Mode = KeyMode.Transport;
     }
 
@@ -223,6 +229,36 @@ public partial class MainWindow : Window
     {
         if (command != PrompterCommand.ToggleOutput) return;
         Dispatcher.BeginInvoke(new Action(() => _model.ToggleOutputCommand.Execute(null)));
+    }
+
+    // ===== live panel (D7) =====
+
+    /// <summary>The flyout's bottom edge is level with the tab bar's bottom edge. It is placed only while it is showing.</summary>
+    private void OnLivePanelChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        var visible = _model.Live.Panel.FlyoutVisible;
+        if (visible == _flyoutTracking) return;
+        _flyoutTracking = visible;
+        if (visible)
+        {
+            LayoutUpdated += OnFlyoutLayoutUpdated;
+            PositionFlyout();
+        }
+        else
+        {
+            LayoutUpdated -= OnFlyoutLayoutUpdated;
+        }
+    }
+
+    private void OnFlyoutLayoutUpdated(object? sender, EventArgs e) => PositionFlyout();
+
+    private void PositionFlyout()
+    {
+        var bar = LiveArea.PanelView.TabBar;
+        if (!bar.IsVisible || BodyGrid.ActualHeight <= 0) return;
+        var barBottom = bar.TranslatePoint(new Point(0, bar.ActualHeight), BodyGrid).Y;
+        var offset = Math.Max(0, Math.Round(BodyGrid.ActualHeight - barBottom));
+        if (Math.Abs(PanelFlyout.Margin.Bottom - offset) > 0.5) PanelFlyout.Margin = new Thickness(0, 0, 0, offset);
     }
 
     // ===== sections flyout =====

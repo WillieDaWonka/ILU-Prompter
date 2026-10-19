@@ -1,0 +1,14 @@
+<UserControl x:Class="IluPrompter.App.Views.LivePanelBody"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="clr-namespace:IluPrompter.App.Controls"
+             xmlns:v="clr-namespace:IluPrompter.App.Views"
+             Focusable="False" IsTabStop="False">
+  <!-- The open tab's content (DESIGN.md "Live panel (D7)"). There is one instance inline under the bar and one in the flyout;
+       only one of them is ever shown. DataContext: LivePanelViewModel. The drawing is a readout and takes no focus. -->
+  <Grid>
+    <v:ControllerPanelView RaisedGround="{Binding RaisedGround, RelativeSource={RelativeSource AncestorType=v:LivePanelBody}}"
+                           Visibility="{Binding IsControllerTab, Converter={x:Static c:BoolToVisibilityConverter.Instance}}"/>
+    <v:OutputLayoutTab Visibility="{Binding IsOutputLayoutTab, Converter={x:Static c:BoolToVisibilityConverter.Instance}}"/>
+  </Grid>
+</UserControl>

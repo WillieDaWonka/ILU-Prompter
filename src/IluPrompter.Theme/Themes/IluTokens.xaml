@@ -128,6 +128,12 @@
   <sys:Double x:Key="Ilu.Size.EditorPaperPad">24</sys:Double>
   <sys:Double x:Key="Ilu.Size.MinWindowWidth">1024</sys:Double>
   <sys:Double x:Key="Ilu.Size.MinWindowHeight">600</sys:Double>
+  <sys:Double x:Key="Ilu.Size.PanelTabBar">32</sys:Double>
+  <sys:Double x:Key="Ilu.Size.ControllerDesignWidth">320</sys:Double>
+  <sys:Double x:Key="Ilu.Size.ControllerDesignHeight">160</sys:Double>
+  <sys:Double x:Key="Ilu.Size.LivePanelBody">168</sys:Double>
+  <sys:Double x:Key="Ilu.Size.LivePanelBodySmall">120</sys:Double>
+  <sys:Double x:Key="Ilu.Size.LivePanelFlyoutWidth">600</sys:Double>
   <!-- Radii -->
   <CornerRadius x:Key="Ilu.Radius.None">0</CornerRadius>
   <CornerRadius x:Key="Ilu.Radius.Chip">2</CornerRadius>

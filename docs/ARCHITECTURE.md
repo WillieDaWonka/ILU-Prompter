@@ -1256,6 +1256,13 @@ public sealed record EditorSettings
     public int RecoverySeconds { get; init; } = 60;
 }
 
+/// <summary>The two tabs of the control window's live panel (DESIGN.md D7). Stored by name.</summary>
+public enum LivePanelTab
+{
+    Controller = 0,
+    OutputLayout = 1,
+}
+
 public sealed record WindowSettings
 {
     public double Left { get; init; } = double.NaN;
@@ -1263,6 +1270,13 @@ public sealed record WindowSettings
     public double Width { get; init; } = 1280;
     public double Height { get; init; } = 800;
     public bool IsMaximized { get; init; } = true;
+
+    /// <summary>The tab the live panel was left on (added with the live panel; old files load as Controller).</summary>
+    public LivePanelTab LivePanelTab { get; init; } = LivePanelTab.Controller;
+
+    /// <summary>False when the live panel was hidden (added with the live panel; old files load as open). An inline
+    /// body follows it at launch; the flyout form ignores it at launch but writes it when opened or hidden.</summary>
+    public bool LivePanelOpen { get; init; } = true;
 }
 
 public sealed record SettingsChangedEventArgs(PrompterSettings Old, PrompterSettings New);
@@ -1318,6 +1332,11 @@ public static class IluJson
 - Debounce: 500 ms after the last `Update`. `SaveAsync` on exit flushes.
 - Corrupt file → `settings.json.bad-yyyyMMddHHmmss`, defaults, `Warn` log.
 - Unknown JSON fields are ignored and missing fields take defaults (default `init` values).
+- **Contract addition, 19 Oct 2026 (approved):** `WindowSettings.LivePanelTab` (`LivePanelTab` enum, stored by name,
+  default `Controller`) and `WindowSettings.LivePanelOpen` (default `true`) remember the live panel (DESIGN.md D7).
+  Both default so that settings files written before the panel load unchanged; `Sanitize` falls back to `Controller`
+  for an undefined tab number. The shell writes them with `ControlWindow with { ... }`, never a fresh `WindowSettings`,
+  so saving the window bounds keeps them.
 - `Update` is thread-safe, and `Changed` is raised outside the lock.
 
 ### 2.9 Core: diagnostics
@@ -2330,7 +2349,10 @@ only against contracts, never against another stream's internals.
     - Transport bar → `IInputRouter.Execute`.
     - Speed control (−10…10 track centred on 0, ±0.5 / Shift ±0.1, `readout`, ≈ wpm) → `EngineCommand.SetSpeed`.
     - Mode switch, Blank toggle, readouts (10 Hz `Status` poll).
-    - D7 output layout: lines visible, spacing, margin editor using `MarginMath` with the link toggle.
+    - D7 live panel (added 19 Oct 2026, see `docs/streams/D-shell.md`): tabs Controller | Output layout and a clickable hide
+      chevron (mouse only, no shortcut). Output layout: lines visible, spacing, margin editor using `MarginMath` with the
+      link toggle. Controller: a live drawing of the chosen controller from `IInputRouter.InputObserved` and
+      `DeviceStatusChanged`; the input thread only records into a table, the existing 10 Hz status poll reads it (§3 rule 10).
   - **App bar, status bar, menus;** file New/Open/Save/Save As/Export (WPF OpenFileDialog/SaveFileDialog,
     `IScriptFileService`, `ISnapshotBuilder.LoadInto/ToScriptFile`, `IPromptDocumentService.SetFileInfo`); recent files.
     InputBindings: Ctrl+N/O/S/Shift+S, Ctrl+, (Settings), Ctrl+/ (shortcuts), F2 (go to script).

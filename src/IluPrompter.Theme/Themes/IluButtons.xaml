@@ -266,6 +266,45 @@
     </Setter>
   </Style>
 
+  <!-- ===== Live panel tab (DESIGN.md D7): a text button, 32 tall, heading face so its width never changes. Tag = "open"
+       for the open tab: text-strong with a 2 px text-strong bar along its bottom edge. Any other tab is text-muted;
+       hover text on raised. Built as a plain button on purpose: no TabControl, so no arrow / Home / Ctrl+Tab keys. ===== -->
+  <Style x:Key="Ilu.Button.PanelTab" TargetType="Button">
+    <Setter Property="FontFamily" Value="{StaticResource Ilu.Font.Ui}"/>
+    <Setter Property="FontSize" Value="14"/>
+    <Setter Property="FontWeight" Value="SemiBold"/>
+    <Setter Property="Foreground" Value="{StaticResource Ilu.Brush.TextMuted}"/>
+    <Setter Property="Background" Value="Transparent"/>
+    <Setter Property="Height" Value="{StaticResource Ilu.Size.PanelTabBar}"/>
+    <Setter Property="Padding" Value="12,0"/>
+    <Setter Property="SnapsToDevicePixels" Value="True"/>
+    <Setter Property="FocusVisualStyle" Value="{StaticResource Ilu.FocusVisual.Small}"/>
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="Button">
+          <Border x:Name="Bd" Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}" SnapsToDevicePixels="True">
+            <Grid>
+              <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" RecognizesAccessKey="False"/>
+              <Border x:Name="Bar" Height="2" VerticalAlignment="Bottom" Margin="-12,0" Background="{StaticResource Ilu.Brush.TextStrong}"
+                      Visibility="Collapsed"/>
+            </Grid>
+          </Border>
+          <ControlTemplate.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+              <Setter Property="Foreground" Value="{StaticResource Ilu.Brush.Text}"/>
+              <Setter TargetName="Bd" Property="Background" Value="{StaticResource Ilu.Brush.Raised}"/>
+            </Trigger>
+            <Trigger Property="Tag" Value="open">
+              <Setter Property="Foreground" Value="{StaticResource Ilu.Brush.TextStrong}"/>
+              <Setter TargetName="Bar" Property="Visibility" Value="Visible"/>
+              <Setter TargetName="Bd" Property="Background" Value="Transparent"/>
+            </Trigger>
+          </ControlTemplate.Triggers>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
   <!-- Toolbar toggle: on = pressed fill, text-strong icon, line-strong edge (differs from hover by its edge) -->
   <Style x:Key="Ilu.ToggleButton.Toolbar" TargetType="ToggleButton">
     <Setter Property="FontFamily" Value="{StaticResource Ilu.Font.Ui}"/>

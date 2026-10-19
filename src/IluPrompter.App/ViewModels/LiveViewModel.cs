@@ -50,6 +50,7 @@ public sealed partial class LiveViewModel : ObservableObject
     private bool _isLive;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(PreviewTooltip))]
     private string _previewCaption = "";
 
     [ObservableProperty]
@@ -121,7 +122,8 @@ public sealed partial class LiveViewModel : ObservableObject
         IMonitorService monitors,
         OutputController outputController,
         IUiThread ui,
-        OutputLayoutViewModel layout)
+        OutputLayoutViewModel layout,
+        LivePanelViewModel panel)
     {
         _engine = engine;
         _output = output;
@@ -131,6 +133,7 @@ public sealed partial class LiveViewModel : ObservableObject
         _outputController = outputController;
         _ui = ui;
         Layout = layout;
+        Panel = panel;
 
         _outputChip = ChipMapper.Output(OutputState.Initial, new OutputChipContext(false, false, false, null));
         _controllerChip = ChipMapper.Controller(settings.Current.Input.SelectedController, null, false);
@@ -154,11 +157,26 @@ public sealed partial class LiveViewModel : ObservableObject
                 _ui.Post(RefreshOutput);
         };
 
+        panel.Controller.SettingsPageRequested += (_, page) => SettingsPageRequested?.Invoke(this, page);
+        panel.PropertyChanged += (_, e) =>
+        {
+            // The fit decides whether the transport captions and the preview's output caption give way to the bar.
+            if (string.IsNullOrEmpty(e.PropertyName) || e.PropertyName is nameof(LivePanelViewModel.HideTransportCaptions) or nameof(LivePanelViewModel.MovePreviewCaption))
+            {
+                OnPropertyChanged(nameof(ShowTransportCaptions));
+                OnPropertyChanged(nameof(ShowPreviewCaption));
+                OnPropertyChanged(nameof(PreviewTooltip));
+            }
+        };
+
         RefreshOutput();
         Poll();
     }
 
     public OutputLayoutViewModel Layout { get; }
+
+    /// <summary>The live panel (D7): Controller and Output layout tabs.</summary>
+    public LivePanelViewModel Panel { get; }
 
     /// <summary>Raised when a chip is clicked: the matching Settings page should open.</summary>
     public event EventHandler<SettingsPageId>? SettingsPageRequested;
@@ -176,15 +194,18 @@ public sealed partial class LiveViewModel : ObservableObject
         }
     }
 
-    public bool ShowTransportCaptions => _tier == LayoutTier.Wide;
+    /// <summary>Captions under the transport buttons: Wide only, and they give way first when the bar would not fit.</summary>
+    public bool ShowTransportCaptions => _tier == LayoutTier.Wide && !Panel.HideTransportCaptions;
+
+    /// <summary>The preview's output caption; when the bar would not fit it moves into the preview's tooltip.</summary>
+    public bool ShowPreviewCaption => !Panel.MovePreviewCaption;
+
+    public string? PreviewTooltip => Panel.MovePreviewCaption ? PreviewCaption : null;
 
     public bool ShowWpm => _tier == LayoutTier.Wide;
 
     /// <summary>"≈ 140 wpm" under the speed at Wide; below Wide it moves into the readout tooltip.</summary>
     public string WpmDisplay => ShowWpm ? WpmText : "";
-
-    /// <summary>D7 sits in the live column at Wide only; at Compact and Narrow it lives in Settings › Output.</summary>
-    public bool ShowOutputLayout => _tier == LayoutTier.Wide;
 
     public bool ChipsInLiveColumn => _tier != LayoutTier.Narrow;
 
@@ -293,6 +314,7 @@ public sealed partial class LiveViewModel : ObservableObject
     /// <summary>Called at 10 Hz on the UI thread.</summary>
     public void Poll()
     {
+        Panel.Poll();   // the controller drawing steps here, at 10 Hz, and nowhere else
         var status = _engine.Status;
         if (ReferenceEquals(status, _lastStatus)) return;
         _lastStatus = status;

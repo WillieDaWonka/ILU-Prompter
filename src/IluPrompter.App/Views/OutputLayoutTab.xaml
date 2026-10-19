@@ -1,0 +1,75 @@
+<UserControl x:Class="IluPrompter.App.Views.OutputLayoutTab"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="clr-namespace:IluPrompter.App.Controls"
+             xmlns:v="clr-namespace:IluPrompter.App.Views"
+             xmlns:t="clr-namespace:IluPrompter.Theme;assembly=IluPrompter.Theme"
+             Focusable="False" IsTabStop="False">
+  <!-- DESIGN.md "Output layout tab (D7)": the old D7 content without its title (the tab is the title). Large body (168 tall):
+       Lines visible and Line spacing stacked in a 200 px column on the left, the margin editor (diagram, four number boxes,
+       link toggle) on the right. Small body (120 tall, no diagram): three rows of 32, 8 apart. Settings > Output keeps the
+       full margin editor. DataContext: LivePanelViewModel. -->
+  <Grid>
+    <!-- Large body -->
+    <Grid Visibility="{Binding IsSmall, Converter={x:Static c:BoolToVisibilityConverter.Instance}, ConverterParameter=invert}">
+      <Grid DataContext="{Binding Layout}">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="200"/>
+          <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+        <StackPanel Margin="0,4,0,0">
+          <TextBlock Text="Lines visible" Style="{StaticResource Ilu.Text.Label}" Foreground="{StaticResource Ilu.Brush.Text}" Margin="0,0,0,2"/>
+          <c:NumberBox HorizontalAlignment="Left" Value="{Binding LinesVisible, Mode=TwoWay}" Minimum="4" Maximum="16" Step="1" ShiftStep="1" Decimals="0"
+                       AutomationProperties.Name="Lines visible"/>
+          <TextBlock Text="Line spacing" Style="{StaticResource Ilu.Text.Label}" Foreground="{StaticResource Ilu.Brush.Text}" Margin="0,12,0,2"/>
+          <c:NumberBox HorizontalAlignment="Left" Value="{Binding LineSpacing, Mode=TwoWay}" Minimum="1" Maximum="2" Step="0.05" ShiftStep="0.05" Decimals="2"
+                       AutomationProperties.Name="Line spacing"/>
+        </StackPanel>
+        <v:MarginEditor Grid.Column="1" DataContext="{Binding Margins}" HorizontalAlignment="Center" VerticalAlignment="Top"/>
+      </Grid>
+    </Grid>
+
+    <!-- Small body: Lines [ 8 ]  Spacing [1.30]  [Link] / Left [160] px  Right [160] px / Top [ 64] px  Bottom [ 64] px -->
+    <Grid Visibility="{Binding IsSmall, Converter={x:Static c:BoolToVisibilityConverter.Instance}}">
+      <Grid DataContext="{Binding Layout}">
+        <Grid.RowDefinitions>
+          <RowDefinition Height="32"/>
+          <RowDefinition Height="8"/>
+          <RowDefinition Height="32"/>
+          <RowDefinition Height="8"/>
+          <RowDefinition Height="32"/>
+        </Grid.RowDefinitions>
+
+        <StackPanel Orientation="Horizontal">
+          <TextBlock Text="Lines" Width="44" Style="{StaticResource Ilu.Text.Label}" Foreground="{StaticResource Ilu.Brush.Text}" VerticalAlignment="Center"/>
+          <c:NumberBox Value="{Binding LinesVisible, Mode=TwoWay}" Minimum="4" Maximum="16" Step="1" ShiftStep="1" Decimals="0" AutomationProperties.Name="Lines visible"/>
+          <TextBlock Text="Spacing" Width="58" Margin="22,0,0,0" Style="{StaticResource Ilu.Text.Label}" Foreground="{StaticResource Ilu.Brush.Text}" VerticalAlignment="Center"/>
+          <c:NumberBox Value="{Binding LineSpacing, Mode=TwoWay}" Minimum="1" Maximum="2" Step="0.05" ShiftStep="0.05" Decimals="2" AutomationProperties.Name="Line spacing"/>
+          <ToggleButton Style="{StaticResource Ilu.ToggleButton.Toolbar}" Margin="16,0,0,0" IsChecked="{Binding Margins.IsLinked, Mode=TwoWay}"
+                        ToolTip="{Binding Margins.LinkTooltip}" AutomationProperties.Name="Link margins">
+            <TextBlock Text="{x:Static t:IluIcons.Link}" Style="{StaticResource Ilu.Text.Icon}"/>
+          </ToggleButton>
+          <TextBlock Text="{Binding Margins.LinkCaption}" Style="{StaticResource Ilu.Text.Label}" Foreground="{StaticResource Ilu.Brush.Text}" VerticalAlignment="Center" Margin="6,0,0,0"/>
+        </StackPanel>
+
+        <StackPanel Grid.Row="2" Orientation="Horizontal" DataContext="{Binding Margins}">
+          <TextBlock Text="Left" Width="44" Style="{StaticResource Ilu.Text.Label}" Foreground="{StaticResource Ilu.Brush.Text}" VerticalAlignment="Center"/>
+          <c:NumberBox Value="{Binding Left, Mode=TwoWay}" Maximum="{Binding MaxHorizontal}" Step="1" ShiftStep="8" AutomationProperties.Name="Left margin in pixels"/>
+          <TextBlock Text="px" Style="{StaticResource Ilu.Text.Caption}" VerticalAlignment="Center" Margin="6,0,0,0" Width="16"/>
+          <TextBlock Text="Right" Width="58" Margin="0,0,0,0" Style="{StaticResource Ilu.Text.Label}" Foreground="{StaticResource Ilu.Brush.Text}" VerticalAlignment="Center"/>
+          <c:NumberBox Value="{Binding Right, Mode=TwoWay}" Maximum="{Binding MaxHorizontal}" Step="1" ShiftStep="8" AutomationProperties.Name="Right margin in pixels"/>
+          <TextBlock Text="px" Style="{StaticResource Ilu.Text.Caption}" VerticalAlignment="Center" Margin="6,0,0,0"/>
+        </StackPanel>
+
+        <StackPanel Grid.Row="4" Orientation="Horizontal" DataContext="{Binding Margins}">
+          <TextBlock Text="Top" Width="44" Style="{StaticResource Ilu.Text.Label}" Foreground="{StaticResource Ilu.Brush.Text}" VerticalAlignment="Center"/>
+          <c:NumberBox Value="{Binding Top, Mode=TwoWay}" Maximum="{Binding MaxVertical}" Step="1" ShiftStep="8" AutomationProperties.Name="Top margin in pixels"/>
+          <TextBlock Text="px" Style="{StaticResource Ilu.Text.Caption}" VerticalAlignment="Center" Margin="6,0,0,0" Width="16"/>
+          <TextBlock Text="Bottom" Width="58" Style="{StaticResource Ilu.Text.Label}" Foreground="{StaticResource Ilu.Brush.Text}" VerticalAlignment="Center"/>
+          <c:NumberBox Value="{Binding Bottom, Mode=TwoWay}" Maximum="{Binding MaxVertical}" Step="1" ShiftStep="8" AutomationProperties.Name="Bottom margin in pixels"/>
+          <TextBlock Text="px" Style="{StaticResource Ilu.Text.Caption}" VerticalAlignment="Center" Margin="6,0,0,0"/>
+        </StackPanel>
+      </Grid>
+    </Grid>
+  </Grid>
+</UserControl>

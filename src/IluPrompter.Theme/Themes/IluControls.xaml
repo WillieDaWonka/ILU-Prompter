@@ -15,4 +15,5 @@
   <GridLength x:Key="Ilu.Grid.AppBar">44</GridLength>
   <GridLength x:Key="Ilu.Grid.StatusBar">28</GridLength>
   <GridLength x:Key="Ilu.Grid.PanelTitleBar">36</GridLength>
+  <GridLength x:Key="Ilu.Grid.PanelTabBar">32</GridLength>
 </ResourceDictionary>

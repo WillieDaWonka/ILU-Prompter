@@ -1,0 +1,76 @@
+<UserControl x:Class="IluPrompter.App.Views.LivePanel"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="clr-namespace:IluPrompter.App.Controls"
+             xmlns:v="clr-namespace:IluPrompter.App.Views"
+             Focusable="False" IsTabStop="False">
+  <!-- DESIGN.md "Live panel (D7)": a 1 px rule, the 32 px tab bar (Controller | Output layout, the last-input line, the hide
+       toggle) and, when the column is tall enough, the body inline. Hiding frees nothing: the bar stays and the space below
+       it stays empty (the preview never rescales mid-show). When the column is short only the bar stays and the body opens
+       as a flyout over the editor (MainWindow). Tabs and the toggle answer Enter and the mouse only: they are plain
+       buttons, not a TabControl. DataContext: LivePanelViewModel. -->
+  <Grid>
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto"/>                                 <!-- rule -->
+      <RowDefinition Height="{StaticResource Ilu.Grid.PanelTabBar}"/> <!-- bar -->
+      <RowDefinition Height="Auto"/>                                 <!-- gap 8 + body -->
+    </Grid.RowDefinitions>
+
+    <Border Style="{StaticResource Ilu.Divider}"/>
+
+    <Grid x:Name="Bar" Grid.Row="1" AutomationProperties.Name="Live panel" KeyboardNavigation.TabNavigation="Continue">
+      <Border Height="1" VerticalAlignment="Bottom" Background="{StaticResource Ilu.Brush.Line}"/>
+      <Grid>
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="Auto"/>
+          <ColumnDefinition Width="Auto"/>
+          <ColumnDefinition Width="*"/>
+          <ColumnDefinition Width="Auto"/>
+        </Grid.ColumnDefinitions>
+        <c:PanelTabButton Style="{StaticResource Ilu.Button.PanelTab}" Content="Controller" Tag="{Binding ControllerTabTag}"
+                          Command="{Binding ShowControllerTabCommand}" KeyboardNavigation.TabIndex="0"
+                          ToolTip="{Binding TabNameControllerTooltip}" AutomationProperties.Name="Controller"/>
+        <c:PanelTabButton Grid.Column="1" Style="{StaticResource Ilu.Button.PanelTab}" Content="Output layout" Tag="{Binding OutputLayoutTabTag}"
+                          Command="{Binding ShowOutputLayoutTabCommand}" KeyboardNavigation.TabIndex="1"
+                          ToolTip="{Binding TabNameOutputLayoutTooltip}" AutomationProperties.Name="Output layout"/>
+
+        <!-- While the drawing is not on screen the last input sits here, right-aligned; it clips at its left edge -->
+        <Grid Grid.Column="2" Margin="12,0,8,0" ClipToBounds="True"
+              Visibility="{Binding ShowBarText, Converter={x:Static c:BoolToVisibilityConverter.Instance}}">
+          <TextBlock Text="{Binding BarText}" ToolTip="{Binding BarText}" Style="{StaticResource Ilu.Text.Caption}"
+                     HorizontalAlignment="Right" VerticalAlignment="Center" TextWrapping="NoWrap"/>
+        </Grid>
+
+        <c:PanelTabButton Grid.Column="3" Style="{StaticResource Ilu.Button.Toolbar}" Command="{Binding ToggleOpenCommand}" KeyboardNavigation.TabIndex="2"
+                          ToolTip="{Binding ToggleTooltip}" AutomationProperties.Name="{Binding ToggleName}">
+          <TextBlock Text="{Binding ToggleGlyph}" Style="{StaticResource Ilu.Text.Icon}"/>
+        </c:PanelTabButton>
+      </Grid>
+    </Grid>
+
+    <!-- The inline body. Visible when open; Hidden (still taking its room) when hidden; Collapsed when the body is a flyout. -->
+    <Border x:Name="InlineBody" Grid.Row="2" Margin="0,8,0,0" Height="{StaticResource Ilu.Size.LivePanelBody}" ClipToBounds="True">
+      <Border.Style>
+        <Style TargetType="Border">
+          <Setter Property="Visibility" Value="Collapsed"/>
+          <Style.Triggers>
+            <DataTrigger Binding="{Binding IsFlyoutForm}" Value="False">
+              <Setter Property="Visibility" Value="Hidden"/>
+            </DataTrigger>
+            <MultiDataTrigger>
+              <MultiDataTrigger.Conditions>
+                <Condition Binding="{Binding IsFlyoutForm}" Value="False"/>
+                <Condition Binding="{Binding IsOpen}" Value="True"/>
+              </MultiDataTrigger.Conditions>
+              <Setter Property="Visibility" Value="Visible"/>
+            </MultiDataTrigger>
+            <DataTrigger Binding="{Binding IsSmall}" Value="True">
+              <Setter Property="Height" Value="{StaticResource Ilu.Size.LivePanelBodySmall}"/>
+            </DataTrigger>
+          </Style.Triggers>
+        </Style>
+      </Border.Style>
+      <v:LivePanelBody/>
+    </Border>
+  </Grid>
+</UserControl>

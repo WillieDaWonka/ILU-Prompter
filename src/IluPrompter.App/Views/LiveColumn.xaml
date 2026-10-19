@@ -24,7 +24,7 @@
   </UserControl.Resources>
 
   <Border Style="{StaticResource Ilu.Panel}" Padding="{Binding ColumnPadding}">
-    <Grid>
+    <Grid x:Name="ColumnGrid">
       <Grid.RowDefinitions>
         <RowDefinition Height="Auto"/>   <!-- D1 chips -->
         <RowDefinition Height="Auto"/>   <!-- D2 preview -->
@@ -32,7 +32,7 @@
         <RowDefinition Height="Auto"/>   <!-- D4 speed -->
         <RowDefinition Height="Auto"/>   <!-- D5 mode and blank -->
         <RowDefinition Height="Auto"/>   <!-- D6 readouts -->
-        <RowDefinition Height="*"/>      <!-- D7 output layout -->
+        <RowDefinition Height="*"/>      <!-- D7 live panel -->
       </Grid.RowDefinitions>
 
       <!-- D1: chips (at Narrow they live in the app bar instead) -->
@@ -42,7 +42,8 @@
       <!-- D2: preview, framed 1 px line-strong, 2 px live while LIVE -->
       <StackPanel Grid.Row="1" Margin="0,0,0,8">
         <c:AspectRatioDecorator Aspect="{Binding PreviewAspect}">
-          <Border x:Name="Frame" Background="{StaticResource Ilu.Brush.Backdrop}" BorderBrush="{StaticResource Ilu.Brush.LineStrong}" BorderThickness="1">
+          <Border x:Name="Frame" Background="{StaticResource Ilu.Brush.Backdrop}" BorderBrush="{StaticResource Ilu.Brush.LineStrong}" BorderThickness="1"
+                  ToolTip="{Binding PreviewTooltip}">
             <Border.Style>
               <Style TargetType="Border">
                 <Style.Triggers>
@@ -77,12 +78,13 @@
             </Grid>
           </Border>
         </c:AspectRatioDecorator>
-        <Grid Margin="0,4,0,0" Height="20">
+        <!-- The output caption gives way to the live panel's bar on a short window (it moves into the preview's tooltip) -->
+        <Grid Margin="0,4,0,0" Height="20" Visibility="{Binding ShowPreviewCaption, Converter={x:Static c:BoolToVisibilityConverter.Instance}}">
           <TextBlock Text="{Binding PreviewCaption}" Style="{StaticResource Ilu.Text.Caption}" TextTrimming="CharacterEllipsis"
                      HorizontalAlignment="Left"/>
         </Grid>
-        <TextBlock Text="{Binding LiveNote}" Style="{StaticResource Ilu.Text.Caption}" Height="18"
-                   Visibility="{Binding LiveNote, Converter={x:Static c:TextToVisibilityConverter.Instance}}"/>
+        <!-- Its room is always kept, LIVE or not, so going LIVE never moves or reshapes the live panel below -->
+        <TextBlock Text="{Binding LiveNote}" Style="{StaticResource Ilu.Text.Caption}" Height="18"/>
       </StackPanel>
 
       <!-- D3: transport, symmetric around Play -->
@@ -250,27 +252,9 @@
         </StackPanel>
       </Grid>
 
-      <!-- D7: output layout (Wide only; at Compact and Narrow it lives in Settings > Output) -->
-      <Grid Grid.Row="6" Visibility="{Binding ShowOutputLayout, Converter={x:Static c:BoolToVisibilityConverter.Instance}}">
-       <Grid DataContext="{Binding Layout}">
-        <Grid.RowDefinitions>
-          <RowDefinition Height="Auto"/>
-          <RowDefinition Height="Auto"/>
-          <RowDefinition Height="Auto"/>
-        </Grid.RowDefinitions>
-        <Border Style="{StaticResource Ilu.Divider}" Margin="0,0,0,8"/>
-        <Grid Grid.Row="1" Margin="0,0,0,8">
-          <TextBlock Text="Output layout" Style="{StaticResource Ilu.Text.Heading}" VerticalAlignment="Center" HorizontalAlignment="Left"/>
-          <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-            <TextBlock Text="Lines" Style="{StaticResource Ilu.Text.Label}" VerticalAlignment="Center" Margin="0,0,8,0"/>
-            <c:NumberBox Value="{Binding LinesVisible, Mode=TwoWay}" Minimum="4" Maximum="16" Step="1" ShiftStep="1" Decimals="0" AutomationProperties.Name="Lines visible"/>
-            <TextBlock Text="Spacing" Style="{StaticResource Ilu.Text.Label}" VerticalAlignment="Center" Margin="16,0,8,0"/>
-            <c:NumberBox Value="{Binding LineSpacing, Mode=TwoWay}" Minimum="1" Maximum="2" Step="0.05" ShiftStep="0.05" Decimals="2" AutomationProperties.Name="Line spacing"/>
-          </StackPanel>
-        </Grid>
-        <v:MarginEditor Grid.Row="2" DataContext="{Binding Margins}"/>
-       </Grid>
-      </Grid>
+      <!-- D7: the live panel. Tabs Controller | Output layout, hide with the chevron; the body sits inline when the column is tall enough,
+           else it opens as a flyout over the editor (MainWindow). It replaces the old fixed Output layout block. -->
+      <v:LivePanel x:Name="PanelArea" Grid.Row="6" DataContext="{Binding Panel}"/>
     </Grid>
   </Border>
 </UserControl>

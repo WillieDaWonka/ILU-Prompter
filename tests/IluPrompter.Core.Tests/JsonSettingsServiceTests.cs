@@ -255,6 +255,49 @@ public sealed class JsonSettingsServiceTests : IDisposable
         Assert.True(double.IsNaN(b.Current.ControlWindow.Left));
     }
 
+    // ---- live panel (DESIGN.md D7): two window settings added with the panel ----
+
+    [Fact]
+    public void AnOldSettingsFile_WithoutTheLivePanelFields_LoadsAsControllerAndOpen()
+    {
+        WriteRaw("""
+            { "schemaVersion": 1, "controlWindow": { "left": 10, "top": 20, "width": 1500, "height": 900, "isMaximized": false } }
+            """);
+        var s = Create();
+        s.Load();
+        Assert.Equal(LivePanelTab.Controller, s.Current.ControlWindow.LivePanelTab);
+        Assert.True(s.Current.ControlWindow.LivePanelOpen);
+        Assert.Equal(1500, s.Current.ControlWindow.Width); // the rest of the old file is untouched
+        Assert.False(s.Current.ControlWindow.IsMaximized);
+    }
+
+    [Fact]
+    public async Task TheLivePanelTab_AndHiddenFlag_SurviveARestart_AsNames()
+    {
+        var a = Create();
+        a.Update(s => s with { ControlWindow = s.ControlWindow with { LivePanelTab = LivePanelTab.OutputLayout, LivePanelOpen = false } });
+        await a.SaveAsync();
+        var text = File.ReadAllText(SettingsFile);
+        Assert.Contains("\"livePanelTab\": \"OutputLayout\"", text);
+        Assert.Contains("\"livePanelOpen\": false", text);
+
+        var b = Create();
+        b.Load();
+        Assert.Equal(LivePanelTab.OutputLayout, b.Current.ControlWindow.LivePanelTab);
+        Assert.False(b.Current.ControlWindow.LivePanelOpen);
+        Assert.Equal(Json(a.Current), Json(b.Current));
+    }
+
+    [Fact]
+    public void AnUnknownTabNumber_FallsBackToController()
+    {
+        WriteRaw("""{ "controlWindow": { "livePanelTab": 7, "livePanelOpen": false } }""");
+        var s = Create();
+        s.Load();
+        Assert.Equal(LivePanelTab.Controller, s.Current.ControlWindow.LivePanelTab);
+        Assert.False(s.Current.ControlWindow.LivePanelOpen);
+    }
+
     // ---- update ----
 
     [Fact]

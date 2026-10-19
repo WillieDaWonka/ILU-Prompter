@@ -1,4 +1,4 @@
-# Stream D: control window shell, theme, settings UI
+﻿# Stream D: control window shell, theme, settings UI
 
 Branch: `worktree-agent-acccb1a241da86c35` (from the scaffold commit). Owner paths: `src/IluPrompter.App/**`, `src/IluPrompter.Theme/**`,
 `tests/IluPrompter.App.Tests/**`, this file. Status: **done**, see "Gaps" for what is deliberately not finished.
@@ -28,7 +28,7 @@ No hex literals outside `IluTokens.xaml` (test-enforced). No `DropShadowEffect`,
 
 ### App (`src/IluPrompter.App`)
 
-- `App.xaml.cs`: startup order frozen (settings `Load()` → output `InitializeAsync()` → main window → router `Start()` → open last script). Nothing resolves
+- `App.xaml.cs`: startup order frozen (settings `Load()` â†’ output `InitializeAsync()` â†’ main window â†’ router `Start()` â†’ open last script). Nothing resolves
   `IScrollEngine` before `Load()` (Stream A's engine reads `StartSpeed` and `DefaultMode` in its constructor). `--window-size WxH` is a dev flag (exact size, not
   remembered). Unhandled UI exceptions are logged and marked handled so a glitch cannot end a show.
 - `Composition/AppServiceCollectionExtensions.cs`: all DI. Everything is a singleton except `SettingsWindow` (a transient behind `Func<SettingsWindow>`).
@@ -37,13 +37,13 @@ No hex literals outside `IluTokens.xaml` (test-enforced). No `DropShadowEffect`,
   `ApplyTier`. Window bounds are restored and saved through `Settings.ControlWindow` (opens maximised by default). Dark title bar via `Interop/DarkTitleBar`
   (an attached property; `DWMWA_USE_IMMERSIVE_DARK_MODE`, plus caption colour on Windows 11) on every window.
 - `Views/EditorPanel` + `Editing/EditorController`: toolbar (Undo, Redo, Size, B I U S, ink and highlight pop-ups, Clear, section marker, Find, zoom; Find and
-  zoom fold into a ⋯ menu below Wide), the paper with a 24 px gutter (reading-line ▶ and `raised` band, double-click to jump the prompt), 2 px `live` edge and
-  caption while LIVE, find bar, zoom as a `LayoutTransform`. Script keys: Ctrl+] / [, Ctrl+Space, Ctrl+= / −, Ctrl+Shift+X / H / Enter, Ctrl+F, F3. Esc leaves the
+  zoom fold into a â‹¯ menu below Wide), the paper with a 24 px gutter (reading-line â–¶ and `raised` band, double-click to jump the prompt), 2 px `live` edge and
+  caption while LIVE, find bar, zoom as a `LayoutTransform`. Script keys: Ctrl+] / [, Ctrl+Space, Ctrl+= / âˆ’, Ctrl+Shift+X / H / Enter, Ctrl+F, F3. Esc leaves the
   script. 250 ms debounced snapshots through `ISnapshotBuilder`/`IPromptDocumentService.Publish`; section styling after edits; recovery copy every
   `Editor.RecoverySeconds` under `%LOCALAPPDATA%\ILU Prompter\recovery` (removed when the script is saved).
 - `Views/LiveColumn`: D1 chips, D2 preview frame (1 px `line-strong`, 2 px `live` while LIVE) in an `AspectRatioDecorator` so it follows the output's shape,
-  wheel hint, caption, D3 transport (8 buttons, Play 96 / 72 / 56 wide), D4 speed (− / track / + / readout / wpm), D5 segmented mode switch and Blank toggle,
-  D6 readouts, D7 output layout (Wide only; lines, spacing, `MarginEditor`).
+  wheel hint, caption, D3 transport (8 buttons, Play 96 / 72 / 56 wide), D4 speed (âˆ’ / track / + / readout / wpm), D5 segmented mode switch and Blank toggle,
+  D6 readouts, D7 the live panel (see "Live panel (D7)" below; it replaced the Wide-only output layout block).
 - `Views/SettingsWindow` + `Views/Pages/*`: Controller (three cards, device picker from `IScrollInputProvider.EnumerateDevices`, mapping table, sensitivity,
   test readout), Output (display picker, margin editor, lines, spacing, reading line, three toggles), Text, Scrolling, Shortcuts (+ print), About. Non-modal,
   owned, applies as you go, Esc closes, "Reset this page to defaults" asks first.
@@ -65,7 +65,7 @@ changes). Status is polled at 10 Hz from one `DispatcherTimer` in `MainWindow` (
 
 ```powershell
 dotnet build IluPrompter.sln          # 0 warnings
-dotnet test  IluPrompter.sln          # App.Tests: 108
+dotnet test  IluPrompter.sln          # App.Tests: 268 (after the live panel)
 dotnet run --project src/IluPrompter.App -- --window-size 1366x720     # exact size; also 1920x1064 and 1093x600
 ```
 
@@ -76,7 +76,7 @@ chip tables), `FormatAndTierTests` (tiers by width, speed and duration formats, 
 stub and for Stream A's real body.
 
 Screenshots (`docs/streams/screens/`, taken from the running app by a screen capture of the window): `layout-1920x1080.png`, `layout-1366x768.png`,
-`layout-1093x614.png`, `sections-flyout-1366x768.png`, `editor-colour-menu-1366x768.png`, `settings-*.png`. The dev machine is 1920 × 1200, so the three
+`layout-1093x614.png`, `sections-flyout-1366x768.png`, `editor-colour-menu-1366x768.png`, `settings-*.png`. The dev machine is 1920 Ã— 1200, so the three
 reference sizes are made with `--window-size`, not by changing Windows display settings.
 
 ## Decisions and deviations from DESIGN.md
@@ -87,8 +87,8 @@ reference sizes are made with `--window-size`, not by changing Windows display s
 - **Spell-check is off** in the editor. WPF underlines in red and cannot be recoloured to `attention`; red is reserved for faults.
 - **Toolbar buttons never take keyboard focus** (so the caret and selection stay in the script). The shortcuts reach every action; the toolbar itself is not in the tab
   order. DESIGN's focus order lists the toolbar, so this is a known gap.
-- **Chip glyphs** (○ ▶ ■ ▲ ✕ ✓) are set in Segoe UI Symbol (text, not emoji). Transport and toolbar icons are Segoe Fluent / MDL2 code points; the
-  glyphs were checked on screen on this machine (Windows 11). "Tx" and "§+" are text, as in the wireframe.
+- **Chip glyphs** (â—‹ â–¶ â–  â–² âœ• âœ“) are set in Segoe UI Symbol (text, not emoji). Transport and toolbar icons are Segoe Fluent / MDL2 code points; the
+  glyphs were checked on screen on this machine (Windows 11). "Tx" and "Â§+" are text, as in the wireframe.
 - **Narrow tier fits 8 targets in 440 px** by dropping the live column padding to 8 and Play to 56 wide (gaps stay 8).
 - **Margin editor** is the diagram plus four number boxes plus the link toggle; the number box (`Controls/NumberBox`) clamps only after load, so a late
   `Maximum` binding cannot squash a value.
@@ -109,7 +109,7 @@ reference sizes are made with `--window-size`, not by changing Windows display s
 - Paste keeps source formatting (no "paste as plain text").
 - The Settings window does not forward keys to the input router, so F5 and the like work only in the main window.
 - High Contrast mode (DESIGN.md: switch to `SystemColors`) is not implemented.
-- The ⋯ overflow on the editor toolbar is a context menu (Find, zoom in / out / 100 %); the zoom list is only in the Wide toolbar.
+- The â‹¯ overflow on the editor toolbar is a context menu (Find, zoom in / out / 100 %); the zoom list is only in the Wide toolbar.
 
 ## Integration changes (19 Oct 2026, see INTEGRATION.md)
 
@@ -119,9 +119,57 @@ reference sizes are made with `--window-size`, not by changing Windows display s
 - Editor: section styling runs before each snapshot (no small grey text on the output after un-marking a section);
   changing the section marker setting republishes at once; undo is re-enabled even if a script is rejected.
 - Script session: per-script overrides apply only after the script loaded.
-- Saved window bounds: never ±Infinity (empty `RestoreBounds` when the window opened maximised).
+- Saved window bounds: never Â±Infinity (empty `RestoreBounds` when the window opened maximised).
 - Controller page: re-lists devices only when the input settings change.
+
+## Live panel (D7), 19 Oct 2026
+
+The foot of the live column is one panel: tabs **Controller** | **Output layout** and a clickable hide chevron. Built from DESIGN.md "Live panel (D7)",
+"Output layout tab" and "Controller drawing", with the user's three decisions applied (they override DESIGN.md, which was updated to match): the freed
+space stays empty when the panel is hidden; **no F9 / Ctrl+F9**, the panel is mouse-only (clickable tabs, clickable icon, tooltips "Hide this panel" /
+"Show this panel"); the **ShuttlePRO v2** is the primary jog-shuttle drawing (also shown while no device name is known yet), the ShuttleXpress is kept.
+
+- **Tabs and hide** (`Views/LivePanel`, `ViewModels/LivePanelViewModel`): plain `PanelTabButton`s (`Controls/PanelTabButton`), not a `TabControl`, so they answer Enter
+  and the mouse only and never take Space, the arrows, Home, Page Up / Down (transport keys stay transport keys; the control declines them in `OnKeyDown`).
+  Open tab: 2 px `text-strong` bar (`Ilu.Button.PanelTab`, `Tag` = open); neither tab has it while hidden. Clicking the open tab does nothing; clicking a tab while
+  hidden opens the panel on it. While the drawing is not on screen the last-input line sits in the bar, right-aligned, clipped on its left.
+- **Remembered**: `WindowSettings.LivePanelTab` and `LivePanelOpen` (ARCHITECTURE Â§2.8, contract addition with defaults that keep old files loading, `Sanitize` guards an
+  undefined tab number). `MainWindow.SaveBounds` now copies the record with `WindowBounds.Apply` (it used to build a fresh `WindowSettings`, which would have reset them).
+- **Where the body goes** (`Logic/LivePanelFit`, measured in `LiveColumn.OnLayoutUpdated`): free height below D6 with the LIVE caption's room always reserved (the 18 px
+  note row is now always there). 209+ inline large (168 body, drawing 320 x 160), 161 to 208 inline small (120, 0.75), else the bar only and a flyout over the editor
+  (width min(600, editor - 16), large drawing when its inner width is 576+, bottom level with the bar's bottom, set in `MainWindow.PositionFlyout`). Under 40 px the
+  transport captions hide, then the preview's output caption moves into its tooltip. Constants (20 and 24 px) are the measured heights of those two rows.
+  The flyout is closed at launch and when the window changes size, never takes focus (its buttons are not focusable), is not closed by a click elsewhere or Esc, and hides
+  while the key mode is Typing. Opening or hiding it writes `LivePanelOpen`.
+- **Output layout tab** (`Views/OutputLayoutTab`): the existing `MarginEditor`, Lines and Spacing number boxes, unchanged, in the large body; a three-row form (no diagram) in
+  the small body. Settings > Output keeps the full editor.
+- **Controller tab** (`ViewModels/ControllerPanelViewModel`, `Logic/Controller*`, `Views/ControllerPanelView`, `Views/Drawings/*`): `IInputRouter.InputObserved` is handled on the
+  provider thread by `ControllerInputTable.Record` only (a lock and a few numbers, no marshalling, no WPF); only inputs the router would accept for the chosen controller
+  are kept. `DeviceStatusChanged` goes through `IUiThread`. The existing 10 Hz poll (`LiveViewModel.Poll` -> `LivePanelViewModel.Poll`) takes a snapshot, builds the
+  model with `ControllerModelBuilder` (pure) and replaces it only when its signature changed. While the drawing is not on screen the poll builds only the bar's last-input
+  line. No `CompositionTarget.Rendering`, storyboard, animation or timer of its own: every change is an instant step. Lit = bound and pressed or within 300 ms of the last edge
+  (400 ms for the wheel and jog, burst ends after 2 s), neutral flash for unbound, dim for unbound at rest; "bound" follows the current scrolling mode and the current settings
+  bindings. Four drawings as `Canvas` XAML from `docs/design/*.svg` with parts named by ControlId, painted from `Ilu.Brush.*` only (`DrawingPainter`); sticks, triggers, wheel
+  treads, ring arc and jog dimple are set from rounded values.
+- **`--demo-input`** (dev only, logs a warning, never default): `Services/DemoInput` feeds a scripted loop of fake mouse-wheel-over-preview events through `IInputSink.Submit`
+  from a background thread. It never uses Xbox, Contour or a dedicated mouse (a test asserts it).
+- Screenshots (`docs/streams/screens/`, run with `--settings-file <throwaway> --window-size WxH`, mouse wheel, no device): `livepanel-1920x1080-controller.png`,
+  `-controller-wheel.png`, `-output-layout.png`, `-hidden.png`, `livepanel-1366x768-bar.png`, `-flyout.png`. The Xbox, ShuttlePRO and ShuttleXpress drawings need hardware to be
+  selected, so they are rendered from fake inputs by `DrawingRenderTests` (set `ILU_DRAWING_PNG_DIR`): `livepanel-drawing-*.png`.
+- Tests: `ControllerPanelTests` (input to lit state, hold, burst, axes, ring, jog, labels, unbound / unknown, status states, battery, filtering, no marshalling per input),
+  `LivePanelTests` (tabs, hidden, persistence, fit by height, flyout rules, keys), `DrawingRenderTests`, `ThemeTokenTests` (new size tokens), settings round-trip in Core.Tests.
+
+**Check the ShuttlePRO v2 button layout against the venue's unit.** The 15 buttons are drawn schematically in the provider's numbering (rows of 4 and 5, two either side of the ring, two
+thumb buttons); the real unit's layout has not been compared. Edit `ShuttleProDrawing.xaml` if it differs.
+
+Deviations from DESIGN.md in this build: the small body leaves the keyboard sentence out of the Missing state (it stays in the chip's tooltip) and drops the detail line;
+a persistent row for a stick shows "LS" or "LS X" / "LS Y" when both axes are bound; a quiet axis (inside its deadzone) does not count as "input" for "No input yet" and the last line;
+the wheel and jog action label is the router's own conversion of the burst ("Speed - 1.5", "Next line"). A generic HID name draws the ShuttlePRO.
+
+Gaps: the Xbox, ShuttlePRO and ShuttleXpress drawings were seen only as renders from fake inputs, not live (no hardware selected, by rule); the LIVE (output on) look of the panel was not
+seen on a second display; the small-body Missing layout is tight at the Narrow tier.
 
 ## CONTRACT-REQUEST
 
 None. Everything needed was in the frozen contracts.
+

@@ -20,6 +20,10 @@ public class LiveViewModelTests
         public OutputController Controller { get; }
         public MarginEditorViewModel Margins { get; }
         public LiveViewModel Live { get; }
+        public KeyModeState KeyMode { get; }
+        public TestClock Clock { get; }
+        public ControllerPanelViewModel ControllerPanel { get; }
+        public LivePanelViewModel Panel { get; }
 
         public Rig()
         {
@@ -27,7 +31,11 @@ public class LiveViewModelTests
             Controller = new OutputController(Output, Dialogs, new NullLog());
             Margins = new MarginEditorViewModel(Settings, Output, Ui);
             var layout = new OutputLayoutViewModel(Settings, Ui, Margins);
-            Live = new LiveViewModel(Engine, Output, Router, Settings, Monitors, Controller, Ui, layout);
+            KeyMode = new KeyModeState();
+            Clock = new TestClock();
+            ControllerPanel = new ControllerPanelViewModel(Router, Settings, Engine, Output, Ui, Clock.Now);
+            Panel = new LivePanelViewModel(Settings, KeyMode, Ui, layout, ControllerPanel);
+            Live = new LiveViewModel(Engine, Output, Router, Settings, Monitors, Controller, Ui, layout, Panel);
         }
     }
 
@@ -227,16 +235,15 @@ public class LiveViewModelTests
     }
 
     [Theory]
-    [InlineData(LayoutTier.Wide, true, true, "Display scrolling", 96)]
-    [InlineData(LayoutTier.Compact, false, false, "Display", 72)]
-    [InlineData(LayoutTier.Narrow, false, false, "Display", 56)]
-    public void Tier_ChangesWhatTheColumnShows(LayoutTier tier, bool captions, bool layout, string modeLabel, double playWidth)
+    [InlineData(LayoutTier.Wide, true, "Display scrolling", 96)]
+    [InlineData(LayoutTier.Compact, false, "Display", 72)]
+    [InlineData(LayoutTier.Narrow, false, "Display", 56)]
+    public void Tier_ChangesWhatTheColumnShows(LayoutTier tier, bool captions, string modeLabel, double playWidth)
     {
         var rig = new Rig();
         rig.Live.Tier = tier;
         Assert.Equal(captions, rig.Live.ShowTransportCaptions);
         Assert.Equal(captions, rig.Live.ShowWpm);
-        Assert.Equal(layout, rig.Live.ShowOutputLayout);
         Assert.Equal(modeLabel, rig.Live.DisplayModeLabel);
         Assert.Equal(playWidth, rig.Live.PlayWidth);
         Assert.Equal(tier != LayoutTier.Narrow, rig.Live.ChipsInLiveColumn);

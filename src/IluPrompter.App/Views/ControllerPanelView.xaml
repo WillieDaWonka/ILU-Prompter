@@ -1,0 +1,120 @@
+<UserControl x:Class="IluPrompter.App.Views.ControllerPanelView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:l="clr-namespace:IluPrompter.App.Logic"
+             xmlns:v="clr-namespace:IluPrompter.App.Views"
+             Focusable="False" IsTabStop="False">
+  <!-- DESIGN.md "Controller drawing (D7, Controller tab)": the drawing on the left, the info column on the right, both
+       top-aligned. Large body W x 168: drawing 320 x 160 at (0,4), info from x 336. Small body W x 120: drawing 240 x 120
+       (0.75) at (0,0), info from x 252. The drawing is a readout, not motion: it is set on the 10 Hz poll, in steps.
+       DataContext: LivePanelViewModel. The drawing and the battery are set in code-behind (ControllerPanelView.xaml.cs). -->
+  <UserControl.Resources>
+    <DataTemplate x:Key="ChipContent">
+      <StackPanel Orientation="Horizontal">
+        <TextBlock Text="{Binding Glyph}" Style="{StaticResource Ilu.Text.Glyph}" VerticalAlignment="Center" Margin="0,0,6,0"/>
+        <TextBlock Text="{Binding Subject}" Style="{StaticResource Ilu.Text.Label}" VerticalAlignment="Center"/>
+        <TextBlock Text=" &#x00B7; " Style="{StaticResource Ilu.Text.Label}" VerticalAlignment="Center"/>
+        <TextBlock Text="{Binding State}" Style="{StaticResource Ilu.Text.State}" FontSize="13" VerticalAlignment="Center"/>
+      </StackPanel>
+    </DataTemplate>
+
+    <!-- One 22 px row: [control] [what it does] [value]. A lit row: action text-strong, value text. A resting row: all text-muted. -->
+    <DataTemplate x:Key="RowTemplate" DataType="{x:Type l:ControllerRow}">
+      <Grid Height="22">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="{Binding ControlColumn, RelativeSource={RelativeSource AncestorType=v:ControllerPanelView}}"/>
+          <ColumnDefinition Width="*"/>
+          <ColumnDefinition Width="{Binding ValueColumn, RelativeSource={RelativeSource AncestorType=v:ControllerPanelView}}"/>
+        </Grid.ColumnDefinitions>
+        <TextBlock Text="{Binding Control}" Style="{StaticResource Ilu.Text.Label}" Foreground="{StaticResource Ilu.Brush.TextMuted}"
+                   VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+        <TextBlock x:Name="Action" Grid.Column="1" Text="{Binding Action}" ToolTip="{Binding Action}" Style="{StaticResource Ilu.Text.Label}"
+                   Foreground="{StaticResource Ilu.Brush.TextMuted}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Margin="0,0,6,0"/>
+        <TextBlock x:Name="Value" Grid.Column="2" Text="{Binding Value}" Style="{StaticResource Ilu.Text.Mono}" Foreground="{StaticResource Ilu.Brush.TextMuted}"
+                   VerticalAlignment="Center" TextAlignment="Right" FontSize="13"/>
+      </Grid>
+      <DataTemplate.Triggers>
+        <DataTrigger Binding="{Binding Lit}" Value="True">
+          <Setter TargetName="Action" Property="Foreground" Value="{StaticResource Ilu.Brush.TextStrong}"/>
+          <Setter TargetName="Value" Property="Foreground" Value="{StaticResource Ilu.Brush.Text}"/>
+        </DataTrigger>
+      </DataTemplate.Triggers>
+    </DataTemplate>
+  </UserControl.Resources>
+
+  <Grid>
+    <!-- Keyboard only: no drawing -->
+    <StackPanel x:Name="NotChosenPanel" HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="Collapsed">
+      <TextBlock Text="{Binding Controller.Model.MessageTitle}" Style="{StaticResource Ilu.Text.Body}" Foreground="{StaticResource Ilu.Brush.Text}" HorizontalAlignment="Center"/>
+      <TextBlock Text="{Binding Controller.Model.MessageDetail}" Style="{StaticResource Ilu.Text.Caption}" HorizontalAlignment="Center"/>
+      <Button Style="{StaticResource Ilu.Button.Link}" Content="Choose a controller" Command="{Binding Controller.ChooseControllerCommand}"
+              HorizontalAlignment="Center" Margin="0,4,0,0" Focusable="False" AutomationProperties.Name="Choose a controller"/>
+    </StackPanel>
+
+    <Grid x:Name="Main">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition x:Name="DrawingColumn" Width="320"/>
+        <ColumnDefinition x:Name="GapColumn" Width="16"/>
+        <ColumnDefinition Width="*"/>
+      </Grid.ColumnDefinitions>
+
+      <!-- The drawing: one ScaleTransform (1.0 or 0.75) via the Viewbox, so stroke widths scale with it -->
+      <Viewbox x:Name="DrawingBox" Width="320" Height="160" Stretch="Uniform" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="0,4,0,0">
+        <ContentControl x:Name="DrawingHost" Focusable="False" IsTabStop="False" IsHitTestVisible="False"/>
+      </Viewbox>
+
+      <!-- The info column. Fixed row heights, so nothing jumps when the state changes. -->
+      <Grid x:Name="Info" Grid.Column="2" ClipToBounds="True">
+        <Grid.RowDefinitions>
+          <RowDefinition Height="20"/>                                   <!-- device line -->
+          <RowDefinition x:Name="DetailRow" Height="18"/>                <!-- detail line (large body only) -->
+          <RowDefinition Height="8"/>
+          <RowDefinition x:Name="RowsRow" Height="88"/>                  <!-- up to 4 rows of 22 (3 in the small body) -->
+          <RowDefinition Height="8"/>
+          <RowDefinition Height="18"/>                                   <!-- last input -->
+        </Grid.RowDefinitions>
+
+        <Grid>
+          <TextBlock Text="{Binding Controller.Model.DeviceLine}" Style="{StaticResource Ilu.Text.Label}" Foreground="{StaticResource Ilu.Brush.Text}"
+                     VerticalAlignment="Center" TextTrimming="CharacterEllipsis" LineHeight="20"/>
+          <StackPanel x:Name="BatteryPanel" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center" Visibility="Collapsed">
+            <Canvas x:Name="BatteryIcon" Width="22" Height="10" VerticalAlignment="Center" Margin="0,0,6,0">
+              <Rectangle x:Name="BatteryOutline" Width="20" Height="10" RadiusX="1" RadiusY="1" StrokeThickness="1" Stroke="{StaticResource Ilu.Brush.TextMuted}"/>
+              <Rectangle x:Name="BatteryNub" Canvas.Left="20" Canvas.Top="3" Width="2" Height="4" Fill="{StaticResource Ilu.Brush.TextMuted}"/>
+              <Rectangle x:Name="BatterySegment1" Canvas.Left="2.5" Canvas.Top="2.5" Width="4" Height="5" Fill="{StaticResource Ilu.Brush.Text}"/>
+              <Rectangle x:Name="BatterySegment2" Canvas.Left="8" Canvas.Top="2.5" Width="4" Height="5" Fill="{StaticResource Ilu.Brush.Text}"/>
+              <Rectangle x:Name="BatterySegment3" Canvas.Left="13.5" Canvas.Top="2.5" Width="4" Height="5" Fill="{StaticResource Ilu.Brush.Text}"/>
+            </Canvas>
+            <TextBlock x:Name="BatteryWord" Text="{Binding Controller.Model.BatteryText}" Style="{StaticResource Ilu.Text.Caption}" VerticalAlignment="Center"/>
+          </StackPanel>
+        </Grid>
+
+        <TextBlock x:Name="DetailText" Grid.Row="1" Text="{Binding Controller.Model.DetailLine}" Style="{StaticResource Ilu.Text.Caption}"
+                   TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+
+        <!-- Connected and in use: the rows -->
+        <ItemsControl x:Name="RowsList" Grid.Row="3" ItemsSource="{Binding Controller.Model.Rows}" ItemTemplate="{StaticResource RowTemplate}"
+                      Focusable="False" IsTabStop="False" VerticalAlignment="Top"/>
+
+        <!-- Connected, nothing yet -->
+        <StackPanel x:Name="NoInputPanel" Grid.Row="3" Grid.RowSpan="3" Visibility="Collapsed">
+          <TextBlock Text="No input yet." Style="{StaticResource Ilu.Text.Label}" Foreground="{StaticResource Ilu.Brush.TextMuted}" Height="22"/>
+          <TextBlock Text="{Binding Controller.Model.Hint}" Style="{StaticResource Ilu.Text.Caption}" TextWrapping="Wrap"/>
+        </StackPanel>
+
+        <!-- Missing: the controller chip exactly as in D1, then why, and the keyboard sentence -->
+        <StackPanel x:Name="MissingPanel" Grid.Row="1" Grid.RowSpan="3" Visibility="Collapsed" Margin="0,2,0,0">
+          <Button x:Name="MissingChip" Style="{StaticResource Ilu.Button.Chip}" HorizontalAlignment="Left" Tag="{Binding Controller.Model.Chip.StyleTag}"
+                  ToolTip="{Binding Controller.Model.Chip.Tooltip}" AutomationProperties.Name="{Binding Controller.Model.Chip.Automation}"
+                  Command="{Binding Controller.ChooseControllerCommand}" Content="{Binding Controller.Model.Chip}" ContentTemplate="{StaticResource ChipContent}"/>
+          <TextBlock Text="{Binding Controller.Model.MessageTitle}" Style="{StaticResource Ilu.Text.Caption}" Foreground="{StaticResource Ilu.Brush.Text}"
+                     TextWrapping="Wrap" Margin="0,6,0,0"/>
+          <TextBlock x:Name="MissingDetail" Text="{Binding Controller.Model.MessageDetail}" Style="{StaticResource Ilu.Text.Caption}" TextWrapping="Wrap"/>
+        </StackPanel>
+
+        <TextBlock x:Name="LastText" Grid.Row="5" Text="{Binding Controller.Model.LastText}" ToolTip="{Binding Controller.Model.LastText}"
+                   Style="{StaticResource Ilu.Text.Caption}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+      </Grid>
+    </Grid>
+  </Grid>
+</UserControl>
