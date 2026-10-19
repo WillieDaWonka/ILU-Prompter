@@ -384,6 +384,47 @@ public class EngineMotionTests
         Assert.True(h.Pos > TestGeometry.PosOfLine(geometry, 10));
     }
 
+    [Fact]
+    public void ChangingTheCurveInSettings_WhilePlaying_RampsInsteadOfJumping()
+    {
+        var h = new EngineHarness();
+        h.Play();
+        h.Run(3);
+        var before = h.Status.LinesPerMinute;
+
+        h.Settings.Update(s => s with { Scroll = s.Scroll with { Curve = new SpeedCurveSettings { LinesPerMinuteAtMax = 40 } } });
+        h.Run(0.1); // the next tick notices the new target and starts a RampChange
+        Assert.True(h.Status.LinesPerMinute < before && h.Status.LinesPerMinute > before / 2, "mid-ramp");
+        h.Run(0.3);
+        Assert.Equal(before / 2, h.Status.LinesPerMinute, 0.1);
+        Assert.Equal(4.5, h.Status.EffectiveSpeed, 1); // still the same UI speed, now half the lines per minute
+    }
+
+    [Fact]
+    public void SeekToAnchor_OutsideTheScript_ClampsToTheNearestLine()
+    {
+        var h = new EngineHarness();
+        h.Apply(EngineCommand.SeekToAnchor(new DocumentAnchor(9999, 5)));
+        Assert.Equal(TestGeometry.PosOfLine(h.Geometry, 99), h.Pos, 9);
+        h.Apply(EngineCommand.SeekToAnchor(new DocumentAnchor(-4, -9)));
+        Assert.True(double.IsFinite(h.Pos));
+        Assert.InRange(h.Pos, h.Pmin, h.Pmax);
+    }
+
+    [Fact]
+    public void ConfiguredSpeedRange_IsRespected()
+    {
+        var settings = PrompterSettings.Default with { Scroll = PrompterSettings.Default.Scroll with { MinSpeed = -6, MaxSpeed = 8, StartSpeed = 3 } };
+        var h = new EngineHarness(settings: settings);
+        Assert.Equal(3.0, h.Status.SetSpeed);
+        h.Apply(EngineCommand.SetSpeed(20));
+        Assert.Equal(8.0, h.Status.SetSpeed);
+        h.Apply(EngineCommand.SetSpeed(-20));
+        Assert.Equal(-6.0, h.Status.SetSpeed);
+        h.Apply(EngineCommand.ResetSpeed());
+        Assert.Equal(3.0, h.Status.SetSpeed);
+    }
+
     private static void RunUntilPaused(EngineHarness h)
     {
         for (var i = 0; i < 3000 && h.Status.Transport == TransportState.Playing; i++)
