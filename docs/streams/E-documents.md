@@ -67,7 +67,9 @@ Tests: 151 in `tests/IluPrompter.Documents.Tests`, all `[WpfFact]`/`[WpfTheory]`
    `ScriptFormatter` clears one property by remembering each run's other managed values, calling `ClearAllProperties`,
    and re-applying what differs from the new defaults. `ClearFormatting` is a plain `ClearAllProperties`, so Size returns
    to the inherited editor base (Normal).
-5. **Line geometry.** `GetCharacterRect` gives the first character's font box, not the line box. With
+5. **Line geometry.** (Integration: the fast path reads WPF's line visuals first, checked against the walk and against
+   `GetCharacterRect` for the first and last paragraph; anything unexpected falls back to the walk described here.)
+   `GetCharacterRect` gives the first character's font box, not the line box. With
    `BlockLineHeight` WPF scales the baseline proportionally, so the font box starts `b * (L - h)` below the line top with
    `b = FontFamily.Baseline / FontFamily.LineSpacing` (checked to 0.01 px for Segoe UI and Poppins). Every line of a
    paragraph is exactly `L` tall, so one rectangle per paragraph is enough and the other tops are arithmetic.
@@ -94,16 +96,18 @@ Tests: 151 in `tests/IluPrompter.Documents.Tests`, all `[WpfFact]`/`[WpfTheory]`
 
 - `Build` snapshot, 6,000 words: about 25 ms. `Create` output document: about 75 ms (most of it WPF's
   `TextRange.Load`; the sanitiser is about 2 ms).
-- `LayoutGeometryBuilder.Build`: **about 65 to 100 ms per 1,000 lines in a Release build** (the target in the plan is
-  30 ms). The cost is almost all WPF's `TextPointer.GetLineStartPosition` (about 50 to 70 microseconds per line); the
-  builder's own work is under a third of the total and it already makes only one `GetCharacterRect` per paragraph. This
-  runs on a rebuild (edit, margin or size change), never per frame. The test guards against quadratic behaviour only and
-  writes its best-of-five measurement to `%TEMP%\ilu-geometry-timing.txt`. Re-measure at integration on a quiet machine.
+- `LayoutGeometryBuilder.Build` (integration update, 19 Oct 2026): **about 8 to 10 ms for the 1,234-line 20-page sample
+  in Release** (7 ms per 1,000 lines; target 30 ms). The builder now reads the laid-out line visuals (one per line, offset
+  to its line-box top) and finds each line's start offset from its first glyph run's characters; see "Line geometry"
+  below. The old line walk (`GetLineStartPosition`, 45 to 120 ms for the same document) remains as the automatic
+  fallback and gives identical tables (`LayoutGeometrySourceTests`). The fast path needs the host to be laid out with
+  unconstrained height (the contract precondition): a fixed-height host only has visuals for the visible lines, and the
+  builder then falls back to the walk.
 
 ## Gaps and notes
 
 - Numbered DOCX lists get a bullet like bulleted ones (the contract says "bullet prefix").
 - The "Typography" and "NumberSubstitution" attributes of an unusual document are accepted but not interpreted.
 - Pasted images are removed at save/snapshot time; they cannot be shown on the output.
-- No CONTRACT-REQUEST is needed. Two things the integrator may want to decide: the 30 ms geometry target
-  (see Performance) and whether the editor should convert pasted lists to paragraphs (list-item anchors).
+- No CONTRACT-REQUEST is needed. The 30 ms geometry target is met at integration (see Performance); list-item anchors
+  are fixed at integration (see `docs/streams/INTEGRATION.md`).

@@ -1,52 +1,303 @@
 using System.Windows;
 using System.Windows.Documents;
+using System.Windows.Media;
 using IluPrompter.Core;
 
 namespace IluPrompter.Documents;
 
 /// <summary>
 /// Builds the line, paragraph and section tables from a laid-out output document (ARCHITECTURE §2.5 / §4.E).
-/// Owner thread only. O(lines): one <c>GetLineStartPosition</c> and one <c>GetCharacterRect</c> per visual line, and
-/// character offsets are accumulated between consecutive line starts instead of being recomputed from the paragraph start.
+/// Owner thread only; stateless.
 /// <para>
-/// Tops are line-box tops. <c>GetCharacterRect</c> returns the font box of the first character, not the line box.
-/// With <see cref="LineStackingStrategy.BlockLineHeight"/> (as the output document uses) WPF scales the baseline
-/// proportionally, so the font box starts <c>b * (lineHeight - boxHeight)</c> below the line top, where
-/// <c>b = FontFamily.Baseline / FontFamily.LineSpacing</c> (verified to 0.01 px for Segoe UI and Poppins). The builder
-/// undoes that offset. Other documents fall back to the rectangle itself. A line that starts with a smaller run than
-/// its tallest run is off by a fraction of a pixel to a few pixels, which is below what the reading line can show.
+/// <b>Tops are line-box tops</b>, not glyph boxes. Two ways to read them, both O(lines):
 /// </para>
+/// <list type="number">
+/// <item><b>Visual tree (fast path, about 10x faster).</b> After layout WPF has one line visual per laid-out line, grouped
+/// under one paragraph visual per paragraph, each offset to its line-box top. The builder reads those offsets and finds
+/// each line's start offset by locating the line's first drawn glyph run (its <c>GlyphRun.Characters</c>) in the
+/// paragraph text. Used only for flat documents (the output factory always flattens) with a fixed line height, and only
+/// when every check passes: one visual group per paragraph, every line's text found in order, tops increasing, and the
+/// first and last paragraph tops agree with <c>GetCharacterRect</c> to 0.5 DIP. Anything unexpected (for example a
+/// future WPF changing its internal visual layout) falls back to (2) silently and gives identical tables, only slower.</item>
+/// <item><b>Line walk (fallback).</b> One <c>GetLineStartPosition</c> per line and one <c>GetCharacterRect</c> per
+/// paragraph. <c>GetCharacterRect</c> returns the font box of the first character, not the line box. With
+/// <see cref="LineStackingStrategy.BlockLineHeight"/> WPF scales the baseline proportionally, so the font box starts
+/// <c>b * (lineHeight - boxHeight)</c> below the line top, where <c>b = FontFamily.Baseline / FontFamily.LineSpacing</c>
+/// (verified to 0.01 px for Segoe UI and Poppins: at 91.5 DIP Poppins the raw rectangle is 13.4 DIP above the line box).
+/// The walk undoes that offset. Documents without a fixed line height use the rectangle itself.</item>
+/// </list>
 /// </summary>
 public sealed class LayoutGeometryBuilder : ILayoutGeometryBuilder
 {
+    /// <summary>Which line source a build may use (tests compare the two).</summary>
+    internal enum LineSource
+    {
+        Auto,
+        LineWalk,
+        VisualTree,
+    }
+
     private readonly IDocumentNavigator _navigator;
 
     public LayoutGeometryBuilder(IDocumentNavigator navigator) => _navigator = navigator;
 
-    public LayoutGeometry Build(FlowDocument laidOutDocument, GeometryBuildOptions options)
+    public LayoutGeometry Build(FlowDocument laidOutDocument, GeometryBuildOptions options) =>
+        Build(laidOutDocument, options, LineSource.Auto, out _)!;
+
+    /// <summary>Returns null only when <paramref name="source"/> is <see cref="LineSource.VisualTree"/> and the fast path
+    /// could not be used.</summary>
+    internal LayoutGeometry? Build(FlowDocument laidOutDocument, GeometryBuildOptions options, LineSource source, out LineSource used)
     {
         ArgumentNullException.ThrowIfNull(laidOutDocument);
         ArgumentNullException.ThrowIfNull(options);
 
         var paragraphs = _navigator.GetParagraphs(laidOutDocument);
-        var indexOf = new Dictionary<Paragraph, int>(paragraphs.Count, ReferenceEqualityComparer.Instance);
-        for (var i = 0; i < paragraphs.Count; i++) indexOf[paragraphs[i]] = i;
-
         var family = laidOutDocument.FontFamily;
         var baselineRatio = family is not null && family.LineSpacing > 0 && family.Baseline > 0
             ? Math.Clamp(family.Baseline / family.LineSpacing, 0.3, 0.95)
             : 0.8;
         var endBlock = FindEndBlock(laidOutDocument);
-        var endStart = endBlock?.ContentStart;
 
-        var tops = new List<double>(Math.Max(16, paragraphs.Count * 2));
-        var heights = new List<double>(tops.Capacity);
-        var lineParagraphs = new List<int>(tops.Capacity);
-        var lineOffsets = new List<int>(tops.Capacity);
-        var paragraphTops = new double[paragraphs.Count];
-        Array.Fill(paragraphTops, double.NaN);
+        var lines = new LineTable(paragraphs.Count);
+        used = LineSource.VisualTree;
+        if (source == LineSource.LineWalk || !TryReadVisualLines(laidOutDocument, paragraphs, baselineRatio, lines))
+        {
+            if (source == LineSource.VisualTree) return null;
+            used = LineSource.LineWalk;
+            lines = new LineTable(paragraphs.Count);
+            WalkLines(laidOutDocument, paragraphs, baselineRatio, endBlock?.ContentStart, lines);
+        }
 
-        var position = laidOutDocument.ContentStart.GetLineStartPosition(0);
+        var tops = lines.Tops;
+        var heights = lines.Heights;
+        var paragraphTops = lines.ParagraphTops;
+        FillGaps(paragraphTops, tops.Count == 0 ? 0 : tops[0]);
+
+        double endTop, documentHeight;
+        if (endBlock is not null)
+        {
+            var endRect = endBlock.ContentStart.GetCharacterRect(LogicalDirection.Forward);
+            var lastRect = laidOutDocument.ContentEnd.GetCharacterRect(LogicalDirection.Backward);
+            endTop = endRect.IsEmpty ? LastBottom(tops, heights) : endRect.Top;
+            documentHeight = lastRect.IsEmpty ? endTop + options.BaseLineHeight : Math.Max(lastRect.Bottom, endTop);
+        }
+        else
+        {
+            endTop = LastBottom(tops, heights);
+            documentHeight = endTop;
+        }
+
+        var sections = new List<SectionMarker>(options.Snapshot.Sections.Count);
+        foreach (var section in options.Snapshot.Sections)
+        {
+            if (section.ParagraphIndex < 0 || section.ParagraphIndex >= paragraphTops.Length) continue;
+            sections.Add(new SectionMarker(section.Index, section.Name, section.ParagraphIndex, paragraphTops[section.ParagraphIndex]));
+        }
+
+        return new LayoutGeometry(
+            options.LayoutKey,
+            options.Snapshot.Version,
+            options.BaseLineHeight,
+            documentHeight,
+            endTop,
+            tops.ToArray(),
+            heights.ToArray(),
+            lines.Paragraphs.ToArray(),
+            lines.Offsets.ToArray(),
+            paragraphTops,
+            sections,
+            options.Snapshot.WordCount);
+    }
+
+    private sealed class LineTable
+    {
+        public LineTable(int paragraphCount)
+        {
+            var capacity = Math.Max(16, paragraphCount * 2);
+            Tops = new List<double>(capacity);
+            Heights = new List<double>(capacity);
+            Paragraphs = new List<int>(capacity);
+            Offsets = new List<int>(capacity);
+            ParagraphTops = new double[paragraphCount];
+            Array.Fill(ParagraphTops, double.NaN);
+        }
+
+        public List<double> Tops { get; }
+        public List<double> Heights { get; }
+        public List<int> Paragraphs { get; }
+        public List<int> Offsets { get; }
+        public double[] ParagraphTops { get; }
+
+        public void Add(double top, double height, int paragraph, int offset)
+        {
+            Tops.Add(top);
+            Heights.Add(height);
+            Paragraphs.Add(paragraph);
+            Offsets.Add(offset);
+            if (double.IsNaN(ParagraphTops[paragraph])) ParagraphTops[paragraph] = top;
+        }
+    }
+
+    // ---- fast path: the laid-out line visuals ----------------------------------------------------------------
+
+    private const string LineVisualType = "LineVisual";
+    private const string DocumentViewType = "FlowDocumentView";
+    private const double FrameTolerance = 0.5;
+
+    private static bool TryReadVisualLines(FlowDocument document, IReadOnlyList<Paragraph> paragraphs, double baselineRatio, LineTable lines)
+    {
+        try
+        {
+            return ReadVisualLines(document, paragraphs, baselineRatio, lines);
+        }
+        catch (InvalidOperationException)
+        {
+            return false; // e.g. a visual that is not connected to the frame; the walk handles it
+        }
+    }
+
+    private static bool ReadVisualLines(FlowDocument document, IReadOnlyList<Paragraph> paragraphs, double baselineRatio, LineTable lines)
+    {
+        if (paragraphs.Count == 0 || !IsFlat(document, paragraphs)) return false;
+        if (document.Parent is not Visual host) return false;
+
+        Visual? frame = null;
+        var groups = new List<List<Visual>>(paragraphs.Count);
+        CollectLineGroups(host, groups, ref frame);
+        if (frame is null || groups.Count != paragraphs.Count) return false;
+
+        var previousTop = double.NegativeInfinity;
+        for (var p = 0; p < paragraphs.Count; p++)
+        {
+            var paragraph = paragraphs[p];
+            if (!HasFixedLineHeight(paragraph)) return false;
+            var height = paragraph.LineHeight;
+            var group = groups[p];
+            string? text = null;
+            var cursor = 0;
+            for (var j = 0; j < group.Count; j++)
+            {
+                var top = group[j].TransformToAncestor(frame).Transform(default).Y;
+                if (!double.IsFinite(top) || top <= previousTop) return false;
+                previousTop = top;
+
+                var (first, drawn) = ReadGlyphs(group[j]);
+                int offset;
+                if (j == 0)
+                {
+                    offset = 0;
+                }
+                else
+                {
+                    if (first is null || first.Length == 0) return false;
+                    text ??= DocumentNavigator.TextBetween(paragraph.ContentStart, paragraph.ContentEnd);
+                    if (cursor > text.Length) return false;
+                    offset = text.IndexOf(first, cursor, StringComparison.Ordinal);
+                    if (offset < cursor) return false;
+                }
+
+                cursor = offset + drawn;
+                lines.Add(top, height, p, offset);
+            }
+
+            if (text is not null && cursor > text.Length) return false;
+        }
+
+        // The frame must be the GetCharacterRect frame: check the first and the last paragraph against the rectangle.
+        return AgreesWithRectangle(paragraphs[0], lines.ParagraphTops[0], baselineRatio)
+               && AgreesWithRectangle(paragraphs[^1], lines.ParagraphTops[^1], baselineRatio);
+    }
+
+    /// <summary>Top-level blocks are exactly the navigator's paragraphs (plus generated blocks such as END).</summary>
+    private static bool IsFlat(FlowDocument document, IReadOnlyList<Paragraph> paragraphs)
+    {
+        var index = 0;
+        foreach (var block in document.Blocks)
+        {
+            if (DocumentNavigator.IsGenerated(block))
+            {
+                if (block is Paragraph) return false; // would add a visual group of its own
+                continue;
+            }
+
+            if (block is not Paragraph paragraph || index >= paragraphs.Count || !ReferenceEquals(paragraphs[index], paragraph)) return false;
+            index++;
+        }
+
+        return index == paragraphs.Count;
+    }
+
+    /// <summary>Depth-first, in document order: each visual whose children include line visuals is one group.</summary>
+    private static void CollectLineGroups(DependencyObject node, List<List<Visual>> groups, ref Visual? frame)
+    {
+        var count = VisualTreeHelper.GetChildrenCount(node);
+        List<Visual>? group = null;
+        for (var i = 0; i < count; i++)
+        {
+            var child = VisualTreeHelper.GetChild(node, i);
+            var name = child.GetType().Name;
+            if (string.Equals(name, LineVisualType, StringComparison.Ordinal))
+            {
+                if (group is null)
+                {
+                    group = new List<Visual>(4);
+                    groups.Add(group);
+                }
+
+                group.Add((Visual)child);
+                continue;
+            }
+
+            if (frame is null && string.Equals(name, DocumentViewType, StringComparison.Ordinal)) frame = (Visual)child;
+            CollectLineGroups(child, groups, ref frame);
+        }
+    }
+
+    /// <summary>The characters of the line's first glyph run and the number of characters drawn on the line.</summary>
+    private static (string? First, int Drawn) ReadGlyphs(Visual line)
+    {
+        string? first = null;
+        var drawn = 0;
+        Visit(VisualTreeHelper.GetDrawing(line), ref first, ref drawn);
+        return (first, drawn);
+
+        static void Visit(Drawing? drawing, ref string? first, ref int drawn)
+        {
+            switch (drawing)
+            {
+                case GlyphRunDrawing { GlyphRun.Characters: { Count: > 0 } characters }:
+                    if (first is null)
+                    {
+                        var buffer = new char[characters.Count];
+                        characters.CopyTo(buffer, 0);
+                        first = new string(buffer);
+                    }
+
+                    drawn += characters.Count;
+                    break;
+                case DrawingGroup group:
+                    foreach (var child in group.Children) Visit(child, ref first, ref drawn);
+                    break;
+            }
+        }
+    }
+
+    private static bool AgreesWithRectangle(Paragraph paragraph, double top, double baselineRatio)
+    {
+        var rect = paragraph.ContentStart.GetCharacterRect(LogicalDirection.Forward);
+        if (rect.IsEmpty) return true; // nothing to compare with; the other checks still hold
+        var (expected, _) = LineBox(paragraph, rect, baselineRatio);
+        return Math.Abs(expected - top) <= FrameTolerance;
+    }
+
+    // ---- fallback: the line walk -----------------------------------------------------------------------------
+
+    private static void WalkLines(FlowDocument document, IReadOnlyList<Paragraph> paragraphs, double baselineRatio, TextPointer? endStart, LineTable lines)
+    {
+        var indexOf = new Dictionary<Paragraph, int>(paragraphs.Count, ReferenceEqualityComparer.Instance);
+        for (var i = 0; i < paragraphs.Count; i++) indexOf[paragraphs[i]] = i;
+
+        var position = document.ContentStart.GetLineStartPosition(0);
         Paragraph? currentParagraph = null;
         TextPointer? previous = null;
         var offset = 0;
@@ -96,52 +347,11 @@ public sealed class LayoutGeometryBuilder : ILayoutGeometryBuilder
                     if (startsParagraph) firstTop = top;
                 }
 
-                tops.Add(top);
-                heights.Add(height);
-                lineParagraphs.Add(paragraphIndex);
-                lineOffsets.Add(offset);
-                if (double.IsNaN(paragraphTops[paragraphIndex])) paragraphTops[paragraphIndex] = top;
+                lines.Add(top, height, paragraphIndex, offset);
             }
 
             position = Advance(position, ref guard);
         }
-
-        FillGaps(paragraphTops, tops.Count == 0 ? 0 : tops[0]);
-
-        double endTop, documentHeight;
-        if (endBlock is not null)
-        {
-            var endRect = endBlock.ContentStart.GetCharacterRect(LogicalDirection.Forward);
-            var lastRect = laidOutDocument.ContentEnd.GetCharacterRect(LogicalDirection.Backward);
-            endTop = endRect.IsEmpty ? LastBottom(tops, heights) : endRect.Top;
-            documentHeight = lastRect.IsEmpty ? endTop + options.BaseLineHeight : Math.Max(lastRect.Bottom, endTop);
-        }
-        else
-        {
-            endTop = LastBottom(tops, heights);
-            documentHeight = endTop;
-        }
-
-        var sections = new List<SectionMarker>(options.Snapshot.Sections.Count);
-        foreach (var section in options.Snapshot.Sections)
-        {
-            if (section.ParagraphIndex < 0 || section.ParagraphIndex >= paragraphTops.Length) continue;
-            sections.Add(new SectionMarker(section.Index, section.Name, section.ParagraphIndex, paragraphTops[section.ParagraphIndex]));
-        }
-
-        return new LayoutGeometry(
-            options.LayoutKey,
-            options.Snapshot.Version,
-            options.BaseLineHeight,
-            documentHeight,
-            endTop,
-            tops.ToArray(),
-            heights.ToArray(),
-            lineParagraphs.ToArray(),
-            lineOffsets.ToArray(),
-            paragraphTops,
-            sections,
-            options.Snapshot.WordCount);
     }
 
     /// <summary>The start of the next visual line, or null at the end (or if the walk stops moving).</summary>
