@@ -4,9 +4,6 @@ using Linearstar.Windows.RawInput.Native;
 
 namespace IluPrompter.Input;
 
-/// <summary>One mouse button edge decoded from a Raw Input record.</summary>
-internal readonly record struct RawButtonEdge(string ControlId, bool IsPressed);
-
 /// <summary>Pure conversions for the dedicated Raw Input mouse (no devices touched).</summary>
 internal static class RawMouseNormaliser
 {
@@ -26,7 +23,7 @@ internal static class RawMouseNormaliser
     /// Writes the Middle / XButton1 / XButton2 edges of a record into <paramref name="edges"/> and returns the
     /// count. Left and right buttons are not forwarded (the prompter mouse is a wheel device).
     /// </summary>
-    public static int ButtonEdges(RawMouseButtonFlags flags, Span<RawButtonEdge> edges)
+    public static int ButtonEdges(RawMouseButtonFlags flags, Span<ButtonEdge> edges)
     {
         var n = 0;
         AddEdges(flags, RawMouseButtonFlags.MiddleButtonDown, RawMouseButtonFlags.MiddleButtonUp, ControlIds.MiddleButton, edges, ref n);
@@ -36,16 +33,16 @@ internal static class RawMouseNormaliser
     }
 
     private static void AddEdges(
-        RawMouseButtonFlags flags, RawMouseButtonFlags down, RawMouseButtonFlags up, string id, Span<RawButtonEdge> edges, ref int n)
+        RawMouseButtonFlags flags, RawMouseButtonFlags down, RawMouseButtonFlags up, string id, Span<ButtonEdge> edges, ref int n)
     {
         if ((flags & down) != 0)
         {
-            edges[n++] = new RawButtonEdge(id, true);
+            edges[n++] = new ButtonEdge(id, true);
         }
 
         if ((flags & up) != 0)
         {
-            edges[n++] = new RawButtonEdge(id, false);
+            edges[n++] = new ButtonEdge(id, false);
         }
     }
 

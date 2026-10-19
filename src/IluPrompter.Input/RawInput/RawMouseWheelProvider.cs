@@ -44,7 +44,7 @@ public sealed class RawMouseWheelProvider : IScrollInputProvider
     private string? _selectedPath;
     private IntPtr _selectedHandle;
     private string _selectedName = "Mouse";
-    private readonly RawButtonEdge[] _edges = new RawButtonEdge[RawMouseNormaliser.MaxEdges];
+    private readonly ButtonEdge[] _edges = new ButtonEdge[RawMouseNormaliser.MaxEdges];
 
     public RawMouseWheelProvider(IAppLog log) => _log = log;
 

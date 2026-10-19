@@ -8,7 +8,7 @@ Branch: `worktree-agent-ae2905c299e5a6360` (stream B). Contract: `docs/ARCHITECT
 |---|---|
 | `AppInputBridge` (keys + preview wheel/buttons) | done, unit-tested (pure helpers + STA event raising, no devices) |
 | `RawMouseWheelProvider` | done, unit-tested helpers only; NOT run on hardware |
-| `XInputProvider` | pending |
+| `XInputProvider` | done, unit-tested helpers only; NOT run on hardware |
 | `ContourShuttleProvider` | pending |
 
 ## Decisions
@@ -34,6 +34,15 @@ Branch: `worktree-agent-ae2905c299e5a6360` (stream B). Contract: `docs/ARCHITECT
   scroll the prompter from any window). Horizontal wheel is ignored; only Middle/XButton1/XButton2 edges are sent.
   Fallback for Phase-0 S4b (no `WM_INPUT` unfocused): set env `ILU_RAWINPUT_TOOLWINDOW=1` to use a zero-size,
   never-shown top-level tool window instead of the message-only window; no code change needed.
+
+- **XInput.** Thread "ILU XInput", `Thread.Sleep(8)`. Slot probing at most 1/s per slot (initial probe is immediate).
+  `deviceId` null or malformed = first connected pad (-1). Connect: buttons already held are the baseline (no press
+  edges), all six axes are emitted once, status `Connected` with battery. `PacketNumber` unchanged = no work.
+  Axis events: change > 0.002, plus a return to exactly 0 always fires (so a released stick/trigger never keeps a
+  tiny residue; one trigger step is 0.0039 so triggers fire on every step anyway). Disconnect (`GetState` false) ->
+  `Disconnected` status, then 1 s probing for reconnect. Switching device or stopping emits zero for the old pad's
+  non-zero axes so the router's slots are not left "held". Guide is not exposed by documented XInput, so not mapped.
+  Battery re-read every 30 s; a change re-reports `Connected` with the new level.
 
 ## How to test
 

@@ -6,18 +6,6 @@ namespace IluPrompter.Input;
 // RawInput/RawMouseWheelProvider.cs, XInput/XInputProvider.cs, Shuttle/ContourShuttleProvider.cs,
 // and deletes this file). Keep the class names and constructor signatures.
 
-public sealed class XInputProvider : IScrollInputProvider
-{
-    public XInputProvider(IAppLog log) { }
-    public ControllerKind Kind => ControllerKind.Xbox;
-    public bool IsRunning => false;
-    public IReadOnlyList<InputDeviceInfo> EnumerateDevices() => Array.Empty<InputDeviceInfo>();
-    public void Start(IInputSink sink, string? deviceId) =>
-        sink.ReportStatus(new DeviceStatus(new InputSourceId(Kind, "xinput:0"), "Xbox", DeviceConnection.NotFound));
-    public void Stop() { }
-    public void Dispose() { }
-}
-
 public sealed class ContourShuttleProvider : IScrollInputProvider
 {
     public ContourShuttleProvider(IAppLog log) { }

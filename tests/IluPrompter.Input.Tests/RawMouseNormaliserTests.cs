@@ -36,26 +36,26 @@ public class RawMouseNormaliserTests
     [Fact]
     public void Middle_and_X_buttons_become_edges()
     {
-        var edges = new RawButtonEdge[RawMouseNormaliser.MaxEdges];
+        var edges = new ButtonEdge[RawMouseNormaliser.MaxEdges];
 
         var n = RawMouseNormaliser.ButtonEdges(RawMouseButtonFlags.MiddleButtonDown, edges);
         Assert.Equal(1, n);
-        Assert.Equal(new RawButtonEdge(ControlIds.MiddleButton, true), edges[0]);
+        Assert.Equal(new ButtonEdge(ControlIds.MiddleButton, true), edges[0]);
 
         n = RawMouseNormaliser.ButtonEdges(RawMouseButtonFlags.MiddleButtonUp, edges);
         Assert.Equal(1, n);
-        Assert.Equal(new RawButtonEdge(ControlIds.MiddleButton, false), edges[0]);
+        Assert.Equal(new ButtonEdge(ControlIds.MiddleButton, false), edges[0]);
 
         n = RawMouseNormaliser.ButtonEdges(RawMouseButtonFlags.Button4Down | RawMouseButtonFlags.Button5Up, edges);
         Assert.Equal(2, n);
-        Assert.Equal(new RawButtonEdge(ControlIds.XButton1, true), edges[0]);
-        Assert.Equal(new RawButtonEdge(ControlIds.XButton2, false), edges[1]);
+        Assert.Equal(new ButtonEdge(ControlIds.XButton1, true), edges[0]);
+        Assert.Equal(new ButtonEdge(ControlIds.XButton2, false), edges[1]);
     }
 
     [Fact]
     public void Left_right_and_wheel_flags_produce_no_edges()
     {
-        var edges = new RawButtonEdge[RawMouseNormaliser.MaxEdges];
+        var edges = new ButtonEdge[RawMouseNormaliser.MaxEdges];
         var flags = RawMouseButtonFlags.LeftButtonDown | RawMouseButtonFlags.LeftButtonUp
             | RawMouseButtonFlags.RightButtonDown | RawMouseButtonFlags.RightButtonUp | RawMouseButtonFlags.MouseWheel;
         Assert.Equal(0, RawMouseNormaliser.ButtonEdges(flags, edges));
@@ -64,7 +64,7 @@ public class RawMouseNormaliserTests
     [Fact]
     public void All_six_edges_fit_in_the_buffer()
     {
-        var edges = new RawButtonEdge[RawMouseNormaliser.MaxEdges];
+        var edges = new ButtonEdge[RawMouseNormaliser.MaxEdges];
         var all = RawMouseButtonFlags.MiddleButtonDown | RawMouseButtonFlags.MiddleButtonUp
             | RawMouseButtonFlags.Button4Down | RawMouseButtonFlags.Button4Up
             | RawMouseButtonFlags.Button5Down | RawMouseButtonFlags.Button5Up;
