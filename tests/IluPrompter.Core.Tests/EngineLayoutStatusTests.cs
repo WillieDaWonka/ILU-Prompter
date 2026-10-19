@@ -88,15 +88,18 @@ public class EngineLayoutTests
     }
 
     [Fact]
-    public void RunningStepAnimation_SnapsToItsTarget_BeforeReanchoring()
+    public void RunningStepAnimation_KeepsRunningFromWhereItIs_ThroughAReLayout()
     {
+        // Changed at the live-edit fix: snapping to the target made the text on the reading line jump mid-step.
         var h = new EngineHarness(TestGeometry.Create(key: "a"));
         h.Apply(EngineCommand.StepLines(3));
         h.Run(0.05);
+        var shown = h.Pos;
+        Assert.True(shown < TestGeometry.PosOfLine(h.Geometry, 3) - 1);
         h.SetLayout(TestGeometry.Create(key: "b")); // same content, new key
-        Assert.Equal(TestGeometry.PosOfLine(h.Geometry, 3), h.Pos, 6);
+        Assert.Equal(shown, h.Pos, 6);              // no jump
         h.Run(0.5);
-        Assert.Equal(TestGeometry.PosOfLine(h.Geometry, 3), h.Pos, 6); // no leftover animation
+        Assert.Equal(TestGeometry.PosOfLine(h.Geometry, 3), h.Pos, 6); // and it arrives
     }
 
     [Fact]

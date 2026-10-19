@@ -86,6 +86,11 @@ public sealed class LayoutGeometry
     public IReadOnlyList<SectionMarker> Sections { get; }
     public int WordCount { get; }
 
+    /// <summary>Plain text of each paragraph as laid out (canonical order, the text LineCharOffsets index), or empty when
+    /// the builder did not supply it. Lets a relayout map the reading anchor through an edit (<see cref="AnchorMap"/>).
+    /// Added after the freeze (live-edit fix, 19 Oct 2026); optional so existing constructions stay valid.</summary>
+    public IReadOnlyList<string> ParagraphTexts { get; init; } = Array.Empty<string>();
+
     public int LineCount => _lineTops.Length;
     public int ParagraphCount => _paragraphTops.Length;
 

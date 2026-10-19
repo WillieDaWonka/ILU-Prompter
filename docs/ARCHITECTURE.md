@@ -722,7 +722,7 @@ public interface IScrollEngine
 | Line mode | Display rules still apply to jumps and steps. **Play** = auto-step one line every `60 / lpm(|SetSpeed|)` s in the sign of SetSpeed (each step is a LineStep animation); `StepIntervalSeconds` reports it. Axis speed in Line mode sets the auto-step rate instead of velocity. Switching mode keeps the position; Display → Line snaps to the nearest line centre with a LineStep animation |
 | Pause at sections | If `Scroll.PauseAtSections` and the reading line crosses a section target while Playing forward → clamp exactly to the target and Pause |
 | Fail-safe | `FailSafeStop`: clear axis slots and ramp the applied speed to 0 over 0.3 s, then Paused |
-| Layout change | `SetLayout` with a new LayoutKey: anchor = `old.GetAnchor(P+R)` plus the fractional position inside that line, then `P = newLineTop + f·newLineHeight − R`. Running step animations snap to their target first. Same key: viewport only, keep `P + R_old − R_new`. Before any geometry, use `LayoutGeometry.Empty` and viewport (1600, 952, 314) |
+| Layout change | `SetLayout` with a new LayoutKey re-anchors in the same call, so the first frame with the new layout already shows the same text on the reading line (**live-edit invariant**: while the output shows, no edit anywhere and no reflow may move the text on the reading line). The reading point is tied to the nearest text line: its start anchor plus the fraction down that line, or, in a gap, the signed distance from the nearer line edge (`LayoutMapping`). When the snapshot changed, the anchor is first mapped through the edit with `AnchorMap.Between(old, new)` (paragraph texts carried by the geometry: paragraph prefix/suffix, unique-text matching, character-level prefix/suffix inside the edited paragraphs; text that was deleted maps to where the deletion was). Both the step animation's destination and the visible position are mapped, so a running step keeps running from where it visibly is; the line-scrolling step timer is not reset. *(Changed 19 Oct 2026, live-edit fix: the old rule kept the paragraph index, so inserting or deleting a paragraph above jumped the prompt, and snapping a running step to its target jumped it mid-step.)* Same key: viewport only, keep `P + R_old − R_new`. Before any geometry, use `LayoutGeometry.Empty` and viewport (1600, 952, 314) |
 | Status | Replace `Status` only when a rounded field changes: EffectiveSpeed/LinesPerMinute/WordsPerMinute to 0.1, SecondsRemaining to 1 s; indices exact. `SecondsRemaining = SecondsForLines(LineCount−1−LineIndex, SetSpeed)` |
 | Performance | Steady-state `Tick` allocates **0 bytes** (test with `GC.GetAllocatedBytesForCurrentThread`). No LINQ, closures or boxing in Tick. One lock (`_gate`), never held while raising events |
 
@@ -819,6 +819,11 @@ public sealed class LayoutGeometry
     public IReadOnlyList<SectionMarker> Sections { get; }
     public int WordCount { get; }
 
+    /// <summary>Plain text of each paragraph as laid out (canonical order, the text LineCharOffsets index), or empty when
+    /// the builder did not supply it. Lets a relayout map the reading anchor through an edit (AnchorMap).
+    /// Added 19 Oct 2026 (live-edit fix); optional so existing constructions stay valid.</summary>
+    public IReadOnlyList<string> ParagraphTexts { get; init; } = Array.Empty<string>();
+
     public int LineCount => _lineTops.Length;
     public int ParagraphCount => _paragraphTops.Length;
 
@@ -883,6 +888,16 @@ public sealed class LayoutGeometry
     }
 }
 ```
+
+**Anchors across edits (added 19 Oct 2026, live-edit fix).** `src/IluPrompter.Core/Layout/AnchorMap.cs`:
+`AnchorMap(IReadOnlyList<string> from, IReadOnlyList<string> to)` with `DocumentAnchor Map(DocumentAnchor)` (allocation-free
+after construction), `AnchorMap.Identity` and `AnchorMap.Between(LayoutGeometry from, LayoutGeometry to)` (identity for the
+same `SnapshotVersion` or when either geometry has no `ParagraphTexts`); and
+`LayoutMapping.MapPosition(LayoutGeometry from, LayoutGeometry to, AnchorMap map, double position, double readingLineY)`,
+the position in `to` that shows what `position` showed on the reading line in `from` (allocation-free). The engine uses
+both on every relayout; a surface whose picture is a different layout from the engine's (for the frame or two until it
+installs the new one) uses them to place its own picture. `ILayoutGeometryBuilder` fills `ParagraphTexts` from the laid-out
+document.
 
 ### 2.6 Core: document snapshot service
 
