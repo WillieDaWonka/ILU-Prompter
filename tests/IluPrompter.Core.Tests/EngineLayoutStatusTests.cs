@@ -221,19 +221,45 @@ public class EngineStatusTests
     }
 
     [Fact]
-    public void Status_SecondsRemaining_IsLinesLeftAtTheSetSpeed()
+    public void Status_SecondsRemaining_IsTheDistanceToEndAtTheSetSpeed_InDisplayScrolling()
     {
+        // Display scrolling: base lines of distance from the current line's centre to END's centre (100 lines of 119.6,
+        // END right after the last line: 100 base lines from line 0, 50 from line 50).
         var h = new EngineHarness();
         var curve = h.Settings.Current.Scroll.Curve;
-        Assert.Equal(Math.Round(TimeEstimator.SecondsForLines(99, 4.5, curve)), h.Status.SecondsRemaining);
+        Assert.Equal(Math.Round(TimeEstimator.SecondsForBaseLines(100, 4.5, curve)), h.Status.SecondsRemaining);
         h.SeekToLine(50);
-        Assert.Equal(Math.Round(TimeEstimator.SecondsForLines(49, 4.5, curve)), h.Status.SecondsRemaining);
+        Assert.Equal(Math.Round(TimeEstimator.SecondsForBaseLines(50, 4.5, curve)), h.Status.SecondsRemaining);
         h.Apply(EngineCommand.SetSpeed(-9));
-        Assert.Equal(Math.Round(TimeEstimator.SecondsForLines(49, -9, curve)), h.Status.SecondsRemaining);
+        Assert.Equal(Math.Round(TimeEstimator.SecondsForBaseLines(50, -9, curve)), h.Status.SecondsRemaining);
         h.Apply(EngineCommand.SetSpeed(0));
         Assert.True(double.IsPositiveInfinity(h.Status.SecondsRemaining));
         h.Apply(EngineCommand.JumpToEnd());
         Assert.Equal(0.0, h.Status.SecondsRemaining);
+    }
+
+    [Fact]
+    public void Status_SecondsRemaining_CountsTextLines_InLineScrolling()
+    {
+        var h = new EngineHarness();
+        var curve = h.Settings.Current.Scroll.Curve;
+        h.Apply(EngineCommand.SetMode(ScrollMode.Line));
+        h.Run(0.5);
+        h.SeekToLine(50);
+        Assert.Equal(Math.Round(TimeEstimator.SecondsForLines(49, 4.5, curve)), h.Status.SecondsRemaining);
+    }
+
+    [Fact]
+    public void Status_SecondsRemaining_IncludesGapsBetweenLines_InDisplayScrolling()
+    {
+        // Real scripts have paragraph gaps and empty lines that take scrolling time but are not lines.
+        var tops = new double[] { 0, 100, 300, 400 };
+        var geometry = new LayoutGeometry("gaps", 1, 100, 600, 500, tops, [100, 100, 100, 100], [0, 0, 2, 2], [0, 10, 0, 10],
+            [0, 200, 300], Array.Empty<SectionMarker>(), 40);
+        var h = new EngineHarness(geometry, new ViewportMetrics(1000, 300, 100));
+        var curve = h.Settings.Current.Scroll.Curve;
+        Assert.Equal(0, h.Status.LineIndex);
+        Assert.Equal(Math.Round(TimeEstimator.SecondsForBaseLines(5, 4.5, curve)), h.Status.SecondsRemaining); // 50 -> 550
     }
 
     [Fact]

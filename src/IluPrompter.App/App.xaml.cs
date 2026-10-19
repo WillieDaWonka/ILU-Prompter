@@ -23,16 +23,26 @@ public partial class App : Application
         var diagnostics = e.Args.Contains("--diag", StringComparer.OrdinalIgnoreCase);
         TextContextMenus.Register();
 
-        _services = new ServiceCollection()
+        var collection = new ServiceCollection()
             .AddIluCore(diagnostics)
             .AddIluDocuments()
             .AddIluInput()
             .AddIluRendering()
-            .AddIluApp()
-            .BuildServiceProvider();
+            .AddIluApp();
+
+        // Dev/test only: --settings-file <path> keeps the operator's own settings untouched (the last registration wins).
+        var settingsFile = TryGetOption(e.Args, "--settings-file");
+        if (settingsFile is not null)
+        {
+            var path = System.IO.Path.GetFullPath(settingsFile);
+            collection.AddSingleton<ISettingsService>(sp => new JsonSettingsService(sp.GetRequiredService<IAppLog>(), path));
+        }
+
+        _services = collection.BuildServiceProvider();
 
         var log = _services.GetRequiredService<IAppLog>();
         log.Info("app", "Starting ILU Prompter " + typeof(App).Assembly.GetName().Version);
+        if (settingsFile is not null) log.Warn("app", "Dev flag --settings-file: settings are read from and written to " + System.IO.Path.GetFullPath(settingsFile));
         DispatcherUnhandledException += (_, args) =>
         {
             // An editing or layout glitch must not take a live show down: log it and carry on.
@@ -46,6 +56,7 @@ public partial class App : Application
             // (directly or through another service) before settings are loaded. Only IAppLog has been resolved so far.
             // 1. settings  2. output thread  3. main window (+ input bridge + preview)  4. input router  5. open the last script
             _services.GetRequiredService<ISettingsService>().Load();
+            FontDiagnostics.Log(log, _services.GetRequiredService<ISettingsService>().Current);   // S6, --diag only
             await _services.GetRequiredService<IOutputSurface>().InitializeAsync();
 
             var main = _services.GetRequiredService<MainWindow>();
@@ -54,7 +65,10 @@ public partial class App : Application
             main.Show();
 
             _services.GetRequiredService<IInputRouter>().Start();
-            _services.GetRequiredService<ScriptSession>().OpenLastOrNew();
+            var session = _services.GetRequiredService<ScriptSession>();
+            // A script path on the command line (Explorer "Open with", a shortcut) opens that script instead of the last one.
+            var scriptPath = FindScriptPath(e.Args);
+            if (scriptPath is null || !session.OpenPath(scriptPath)) session.OpenLastOrNew();
         }
         catch (Exception ex)
         {
@@ -74,6 +88,34 @@ public partial class App : Application
         }
 
         base.OnExit(e);
+    }
+
+    /// <summary>Flags that take a value (the next argument), so the value is never mistaken for a script path.</summary>
+    private static readonly string[] OptionsWithValue = ["--window-size", "--settings-file"];
+
+    /// <summary>The value after <paramref name="option"/>, or null.</summary>
+    internal static string? TryGetOption(string[] args, string option)
+    {
+        var index = Array.FindIndex(args, a => string.Equals(a, option, StringComparison.OrdinalIgnoreCase));
+        return index >= 0 && index + 1 < args.Length && !args[index + 1].StartsWith("--", StringComparison.Ordinal) ? args[index + 1] : null;
+    }
+
+    /// <summary>The first argument that is neither a flag nor a flag's value: a script to open.</summary>
+    internal static string? FindScriptPath(string[] args)
+    {
+        for (var i = 0; i < args.Length; i++)
+        {
+            var arg = args[i];
+            if (arg.StartsWith("--", StringComparison.Ordinal))
+            {
+                if (OptionsWithValue.Contains(arg, StringComparer.OrdinalIgnoreCase)) i++;
+                continue;
+            }
+
+            return System.IO.Path.GetFullPath(arg);
+        }
+
+        return null;
     }
 
     /// <summary>Dev only: <c>--window-size 1366x768</c> opens the control window at that exact size (for layout checks).</summary>

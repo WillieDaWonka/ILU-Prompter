@@ -37,6 +37,7 @@ public sealed class RawMouseWheelProvider : IScrollInputProvider
     private Thread? _thread;
     private Dispatcher? _dispatcher;
     private volatile bool _running;
+    private int _skippedLogged;
 
     // Provider thread only.
     private HwndSource? _source;
@@ -54,30 +55,47 @@ public sealed class RawMouseWheelProvider : IScrollInputProvider
 
     public IReadOnlyList<InputDeviceInfo> EnumerateDevices()
     {
+        // Read-only device listing (no registration). One device at a time: RawInputDevice.GetDevices() throws for the
+        // whole list when a single device cannot be described (seen at integration on this laptop: "InvalidDeviceId",
+        // typically a virtual or just-removed device), which left the picker empty.
+        RawInputDeviceListItem[] items;
         try
         {
-            var list = new List<InputDeviceInfo>();
-            foreach (var d in RawInputDevice.GetDevices())
-            {
-                if (d.DeviceType != RawInputDeviceType.Mouse || string.IsNullOrEmpty(d.DevicePath))
-                {
-                    continue;
-                }
-
-                list.Add(new InputDeviceInfo(
-                    ControllerKind.MouseWheel,
-                    d.DevicePath,
-                    RawMouseNormaliser.DisplayName(d.ProductName, d.ManufacturerName, d.VendorId, d.ProductId),
-                    d.IsConnected));
-            }
-
-            return list;
+            items = User32.GetRawInputDeviceList();
         }
         catch (Exception ex)
         {
             _log.Warn(Area, "Could not enumerate mice: " + ex.Message);
             return Array.Empty<InputDeviceInfo>();
         }
+
+        var list = new List<InputDeviceInfo>();
+        var skipped = 0;
+        foreach (var item in items)
+        {
+            if (item.Type != RawInputDeviceType.Mouse) continue;
+            try
+            {
+                var d = RawInputDevice.FromHandle(item.Device);
+                if (string.IsNullOrEmpty(d.DevicePath)) continue;
+                list.Add(new InputDeviceInfo(
+                    ControllerKind.MouseWheel,
+                    d.DevicePath,
+                    RawMouseNormaliser.DisplayName(d.ProductName, d.ManufacturerName, d.VendorId, d.ProductId),
+                    d.IsConnected));
+            }
+            catch (Exception)
+            {
+                skipped++;
+            }
+        }
+
+        if (skipped > 0 && Interlocked.Exchange(ref _skippedLogged, 1) == 0)
+        {
+            _log.Info(Area, $"{skipped} mouse device(s) could not be described and are not offered (logged once).");
+        }
+
+        return list;
     }
 
     public void Start(IInputSink sink, string? deviceId)
@@ -239,6 +257,26 @@ public sealed class RawMouseWheelProvider : IScrollInputProvider
         }
     }
 
+    /// <summary>The mice that can be described, one device at a time (a device that throws is skipped, not fatal).</summary>
+    private static IEnumerable<RawInputDevice> DescribableMice()
+    {
+        foreach (var item in User32.GetRawInputDeviceList())
+        {
+            if (item.Type != RawInputDeviceType.Mouse) continue;
+            RawInputDevice? device = null;
+            try
+            {
+                device = RawInputDevice.FromHandle(item.Device);
+            }
+            catch (Exception)
+            {
+                // skipped: see EnumerateDevices
+            }
+
+            if (device is not null) yield return device;
+        }
+    }
+
     private void SelectDevice(IInputSink sink, string path)
     {
         _sink = sink;
@@ -246,9 +284,9 @@ public sealed class RawMouseWheelProvider : IScrollInputProvider
         _selectedHandle = IntPtr.Zero;
         try
         {
-            foreach (var d in RawInputDevice.GetDevices())
+            foreach (var d in DescribableMice())
             {
-                if (d.DeviceType == RawInputDeviceType.Mouse && RawMouseNormaliser.SamePath(d.DevicePath, path))
+                if (RawMouseNormaliser.SamePath(d.DevicePath, path))
                 {
                     _selectedHandle = RawInputDeviceHandle.GetRawValue(d.Handle);
                     _selectedName = RawMouseNormaliser.DisplayName(d.ProductName, d.ManufacturerName, d.VendorId, d.ProductId);

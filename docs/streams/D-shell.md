@@ -111,6 +111,17 @@ reference sizes are made with `--window-size`, not by changing Windows display s
 - High Contrast mode (DESIGN.md: switch to `SystemColors`) is not implemented.
 - The ⋯ overflow on the editor toolbar is a context menu (Find, zoom in / out / 100 %); the zoom list is only in the Wide toolbar.
 
+## Integration changes (19 Oct 2026, see INTEGRATION.md)
+
+- Command line: a script path opens that script; dev flag `--settings-file <path>` uses a throwaway settings file.
+- `--diag` logs each face/weight's resolved font file (`Services/FontDiagnostics`, Phase-0 S6).
+- Sections: rebuilding rows no longer "shows the section in the editor" (the caret stayed where you type).
+- Editor: section styling runs before each snapshot (no small grey text on the output after un-marking a section);
+  changing the section marker setting republishes at once; undo is re-enabled even if a script is rejected.
+- Script session: per-script overrides apply only after the script loaded.
+- Saved window bounds: never ±Infinity (empty `RestoreBounds` when the window opened maximised).
+- Controller page: re-lists devices only when the input settings change.
+
 ## CONTRACT-REQUEST
 
 None. Everything needed was in the frozen contracts.

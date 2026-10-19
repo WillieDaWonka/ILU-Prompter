@@ -57,6 +57,13 @@ Branch: `worktree-agent-ae2905c299e5a6360` (stream B). Contract: `docs/ARCHITECT
   IOException/unplug -> `Disconnected`.
 - **Stubs.** `Providers.Stubs.cs` is deleted; no `STUB` markers remain in `src/IluPrompter.Input`.
 
+## Integration change (19 Oct 2026)
+
+`RawMouseWheelProvider` lists mice one device at a time (`User32.GetRawInputDeviceList` + `RawInputDevice.FromHandle`)
+and skips a device that cannot be described: on this laptop `RawInputDevice.GetDevices()` threw `InvalidDeviceId` for
+the whole list, so the picker was empty. The dedicated-mouse lookup uses the same safe listing. Read-only, no
+registration.
+
 ## Hardware verification still needed (not done: Defender rule, ask the user first)
 
 1. Raw Input INPUTSINK on the message-only window actually delivers `WM_INPUT` while another app is focused

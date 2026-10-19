@@ -210,6 +210,15 @@ All contract files below go into the scaffold commit **verbatim** and are then *
 - **Bounds**: `Pmin = LineCentre(0) − R` (DESIGN: the first line starts on the reading line, black above).
   `Pmax = EndTop + BaseLineHeight/2 − R` (END's centre on the reading line).
 - **Line on the reading line** = `FindLineAt(P + R)`. Every alignment target puts a line's **centre** on the reading line.
+- **Lines are text lines** (integration, 19 Oct 2026). The line table holds the laid-out lines of paragraphs that have
+  something to read. A blank paragraph (only white space: an empty line, or a section marker whose name is hidden, which
+  the factory empties) is layout space: it has a `ParagraphTop` (so `Sections[i].Top` is still its marker's top) but no
+  line. So the start position, line and paragraph steps, section jumps (`first line with top ≥ Section.Top`) and Line
+  scrolling always put text on the reading line, and the readout counts text lines. Paragraph steps skip paragraphs
+  without lines.
+- **Time estimates** (integration). Display scrolling moves `lpm × BaseLineHeight` per minute whatever is on the lines, so
+  `SecondsRemaining` (Display), `SectionDurations` and `WordsPerMinute` use distance in base lines (gaps and blank
+  paragraphs included); Line scrolling's `SecondsRemaining` and wpm count text lines.
 - **Speed** = UI units −10…+10. `SpeedCurve` converts to lpm and DIP/s using `geometry.BaseLineHeight`.
 - **Time** = `Stopwatch.GetTimestamp()` ticks everywhere (engine, input timestamps).
 
@@ -1991,8 +2000,10 @@ public static class ThemeResources
    → ISnapshotBuilder.Build → IPromptDocumentService.Publish     rebuild (coalesced) → layout → geometry → engine.SetLayout
  PrompterPreview: PrompterSurface #1 (own FlowDocument),      CompositionTarget.Rendering (per frame):
    rebuild on snapshot/settings → engine.SetLayout             dedupe RenderingTime → engine.Tick(now) → Y = −ReadPosition()
-   Rendering: engine.TickIfStale(now) → Y = −pos × scale      DisplaySleepGuard, FrameStats (--diag)
- LiveViewModel polls engine.Status at 10 Hz
+   output live: repaint on FramePulse ◄──────────────────────  FramePulse after each moved frame (+ 250 ms heartbeat)
+   output not rendering: own Rendering → TickIfStale(now,     DisplaySleepGuard, FrameStats (--diag)
+     0.001) → Y = −pos (preview is the only ticker)
+ MainWindow polls engine.Status at 10 Hz (DispatcherTimer)
             │                                                            │
             └──────────── IScrollEngine (Core, lock + lock-free publish) ┘
                                ▲ Post(EngineCommand) from any thread
@@ -2019,10 +2030,21 @@ Rules:
 4. **Who supplies geometry.** Both surfaces call `engine.SetLayout(geometry, viewport)` after each rebuild. The engine
    ignores a geometry whose `LayoutKey` equals the current one (viewport still updated). So the engine always has a
    geometry, whether or not the output is open.
-5. **Who ticks.** The output window's Rendering handler calls `engine.Tick(Stopwatch.GetTimestamp())` once per *new*
-   `RenderingEventArgs.RenderingTime`. The preview calls `engine.TickIfStale(now, 0.05)`, which ticks only if the output
-   has not ticked for 50 ms (output closed, hidden, missing or blank-but-hidden). Both surfaces then read
-   `ReadPosition()`. The preview follows the output within one frame (DESIGN D2).
+5. **Who ticks.** (Amended at integration, 19 Oct 2026, from stream C's CONTRACT-REQUEST.) The output window's Rendering
+   handler calls `engine.Tick(t)` once per *new* `RenderingEventArgs.RenderingTime` (mapped to Stopwatch ticks by
+   `FrameClock`). Then:
+   - **Output rendering** (`State.IsOpen && Display == Ready`): the preview has **no** `CompositionTarget.Rendering`
+     subscription. `OutputHost` implements the internal `IFramePulse` and raises `FramePulse` on the output thread after
+     each frame in which the position changed, plus a 250 ms heartbeat. The preview coalesces pulses into one
+     `Dispatcher.BeginInvoke` that reads `ReadPosition()` and sets its transform. A 250 ms UI watchdog falls back to the
+     Rendering mode below if pulses stop for 500 ms, and returns to pulses when they resume.
+   - **Output not rendering** (closed, hidden, Missing, Duplicated, or an `IOutputSurface` without a pulse): the preview
+     subscribes to Rendering and is the only ticker, calling `engine.TickIfStale(now, 0.001)` every frame (with the
+     default 0.05 the engine would only advance at 20 Hz), then reads `ReadPosition()`.
+
+   Why: measured on this laptop, two UI threads that each have a `Rendering` subscription both drop to 30 fps (each frame
+   waits for the single WPF render thread twice); pulse-driven painting at up to 60 Hz leaves the output at 60 fps. The
+   preview follows the output within one frame (DESIGN D2).
 6. **Input threads** never touch WPF objects. They call the thread-safe router, which only posts engine commands,
    calls `IOutputSurface.SetBlank` (which marshals internally) or raises events for D to marshal.
 7. **Shutdown.** `OutputHost.ShutdownAsync` closes the window via `Dispatcher.InvokeAsync`, calls
@@ -2034,6 +2056,17 @@ Rules:
 9. **Exceptions.** An exception on the output thread is caught in its Dispatcher's `UnhandledException`, logged, marked
    handled and the frame skipped. The output thread must never take the app down. Provider exceptions → `DeviceStatus`
    with `Detail`, logged.
+10. **No per-frame UI-thread work in the control window while the output is live** (added at integration): no
+    `CompositionTarget.Rendering` subscriptions (other than the preview's own fallback in rule 5, which is only active
+    while the output is not rendering), no looping or continuous storyboards/animations (spinners, pulsing chips,
+    marquees, indeterminate progress bars), no per-frame timers. Occasional updates are fine and were measured harmless:
+    the 10 Hz status poll (a `DispatcherTimer` that only sets properties whose value changed), typing, caret blink.
+    Checked at integration: stream D has no Rendering subscription, storyboard or animation; its only timers are the
+    10 Hz poll, the 250 ms editor debounce and the recovery timer.
+11. **Rebuilds are never on the per-frame path.** A rebuild (new snapshot or a layout setting) runs once per change at
+    `DispatcherPriority.Background` on each surface's thread. On the output thread it blocks frames for its duration
+    (about 100 to 150 ms for the 20-page sample on this laptop, mostly `TextRange.Load` and WPF layout; the geometry
+    tables take about 10 ms), so an edit while LIVE costs a short hitch on the output once the 250 ms debounce expires.
 
 ---
 
@@ -2195,7 +2228,9 @@ only against contracts, never against another stream's internals.
       presenter sees black".
     - Margin edges: hover shows a 4 px `action-pressed` handle and resize cursor; drag → `MarginMath.SetEdgePixels`
       (Shift snaps to 8 px). Reading line drag → `ReadingLineFraction` 0.10–0.60.
-    - `IsPointerOverScript`. Rendering: `TickIfStale`, then `Y = −pos`.
+    - `IsPointerOverScript`. Driving the picture (amended at integration, see §3 rule 5): while the output renders, repaint
+      on the output's `FramePulse` (no Rendering subscription on the UI thread); otherwise subscribe to Rendering, call
+      `TickIfStale(now, 0.001)` and set `Y = −pos`.
   - **`Diagnostics/FrameStats`** (with `--diag`): per surface, a ring buffer of frame intervals. Every 10 s log
     mean/p95/p99/max and the count > 1.5 × nominal (nominal = 1/RefreshHz). Also log both surfaces' first 50 LineTops
     per LayoutKey (S7).
@@ -2312,6 +2347,11 @@ only against contracts, never against another stream's internals.
       (navigator order). Char offset within the paragraph.
     - ParagraphTops, Sections (marker paragraph top), EndTop (END block top), DocumentHeight.
     - Target ≤ 30 ms for 1,000 lines.
+    - (Integration, 19 Oct 2026.) Tops are **line-box** tops, not `GetCharacterRect` glyph boxes (at 91.5 DIP Poppins
+      the raw rectangle is 13.4 DIP above the line box; the walk corrects it via the font's baseline ratio). The builder
+      first reads WPF's laid-out line visuals (one per line, offset to its line-box top; start offsets from each line's
+      first glyph run): about 7 ms per 1,000 lines. The line walk above is the checked fallback (45–120 ms per 1,000
+      lines) and gives identical tables.
   - **`ScriptFormatter`:** contract. Sizes as `editorBase × factor`; `GetSize` maps to the nearest factor and returns null
     if the range is mixed; highlight applies its ink; ClearFormatting resets size to Normal (not inherit-less).
     `InsertSectionMarker` splits at the caret paragraph and selects the name.

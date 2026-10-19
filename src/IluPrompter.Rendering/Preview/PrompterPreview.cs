@@ -42,6 +42,7 @@ public sealed class PrompterPreview : Control
     private PrompterSurface? _surface;
     private FrameClock _clock = new();
     private FrameStats? _stats;
+    private double _lastStatsPosition = double.NaN;
     private bool _outputRendering;
     private IFramePulse? _pulse;
     private bool _renderingSubscribed;
@@ -254,8 +255,10 @@ public sealed class PrompterPreview : Control
             ApplyDriveMode();
         }
 
-        surface.SetPosition(services.Engine.ReadPosition());
-        _stats?.Record(Stopwatch.GetTimestamp());
+        var position = services.Engine.ReadPosition();
+        surface.SetPosition(position);
+        _stats?.Record(Stopwatch.GetTimestamp(), moving: position != _lastStatsPosition);
+        _lastStatsPosition = position;
     }
 
     private void OnRendering(object? sender, EventArgs e)
@@ -271,8 +274,10 @@ public sealed class PrompterPreview : Control
         if (_outputRendering) services.Engine.TickIfStale(now, 0.05);
         else services.Engine.TickIfStale(frame, 0.001);
 
-        surface.SetPosition(services.Engine.ReadPosition());
-        _stats?.Record(frame);
+        var position = services.Engine.ReadPosition();
+        surface.SetPosition(position);
+        _stats?.Record(frame, moving: position != _lastStatsPosition);
+        _lastStatsPosition = position;
     }
 
     // ------------------------------------------------------------------ state from the output thread
@@ -358,6 +363,9 @@ public sealed class PrompterPreview : Control
     protected override void OnMouseLeftButtonDown(MouseButtonEventArgs e)
     {
         base.OnMouseLeftButtonDown(e);
+        // DESIGN "Keyboard shortcuts": clicking the preview gives the keys to the transport (the shell switches the key
+        // mode when focus arrives here). Without this, Space after a click still typed into the script.
+        if (Focusable && !IsKeyboardFocusWithin) Focus();
         if (_surface is null) return;
         var handle = PreviewMath.HitTest(e.GetPosition(this), _scene.Layout, _surface.TextArea, _surface.Output.WidthDip, _surface.Output.HeightDip);
         if (handle == PreviewHandle.None) return;

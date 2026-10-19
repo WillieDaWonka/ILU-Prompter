@@ -128,8 +128,14 @@ public sealed class EditorController : IScriptEditor, ISectionEditing
             BaseFontSize = file.EditorBaseFontSize > 0 ? file.EditorBaseFontSize : _s.Settings.Current.Editor.BaseFontSize;
             _editor.FontSize = BaseFontSize;
             _editor.IsUndoEnabled = false;
-            _s.Snapshots.LoadInto(_editor.Document, file.DocumentXaml);
-            _editor.IsUndoEnabled = true;
+            try
+            {
+                _s.Snapshots.LoadInto(_editor.Document, file.DocumentXaml);
+            }
+            finally
+            {
+                _editor.IsUndoEnabled = true; // also when the script is rejected (it leaves the document untouched)
+            }
             _sectionSignature = "";
             StyleSections(force: true);
             _editor.CaretPosition = _editor.Document.ContentStart;
@@ -152,10 +158,13 @@ public sealed class EditorController : IScriptEditor, ISectionEditing
         _debounce.Stop();
         try
         {
+            // Section styling first (integration fix): a paragraph that stopped being a marker, or one split off a marker
+            // by Enter (WPF copies the paragraph's local values), must not carry the small grey label look into the
+            // snapshot, where the output would show it. The formatter only writes what differs, so this is undo-neutral.
+            StyleSections(force: true);
             var snapshot = _s.Snapshots.Build(
                 _editor.Document, _s.Documents.NextVersion(), BaseFontSize, _s.Settings.Current.Editor.SectionMarker);
             _s.Documents.Publish(snapshot);
-            StyleSections(force: false, snapshot.Sections);
         }
         catch (Exception ex)
         {
@@ -202,6 +211,10 @@ public sealed class EditorController : IScriptEditor, ISectionEditing
     {
         if (!ReferenceEquals(e.Old.Text, e.New.Text)) _editor.Dispatcher.BeginInvoke(new Action(ApplyTextSettings));
         if (e.Old.Editor.ZoomPercent != e.New.Editor.ZoomPercent) _editor.Dispatcher.BeginInvoke(new Action(ApplyZoomText));
+        // A new section marker ("##" → "#") changes which paragraphs are sections: restyle and republish now, not at the
+        // next keystroke (integration fix).
+        if (!string.Equals(e.Old.Editor.SectionMarker, e.New.Editor.SectionMarker, StringComparison.Ordinal))
+            _editor.Dispatcher.BeginInvoke(new Action(PublishNow));
     }
 
     private void ApplyTextSettings()

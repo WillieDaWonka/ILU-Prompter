@@ -193,7 +193,7 @@ public class LayoutGeometryBuilderTests
     }
 
     [WpfFact]
-    public void ShownAndHiddenSectionNames_BothKeepOneLinePerMarkerParagraph()
+    public void ShownSectionNames_AreOneLine_HiddenOnesAreSpaceWithATopButNoLine()
     {
         foreach (var show in new[] { false, true })
         {
@@ -203,9 +203,22 @@ public class LayoutGeometryBuilderTests
                 foreach (var section in snapshot.Sections)
                 {
                     var lines = Enumerable.Range(0, g.LineCount).Where(i => g.LineParagraphs[i] == section.ParagraphIndex).ToList();
-                    Assert.Single(lines);
-                    var expected = show ? 0.4 * BaseSize * Spacing : 0.5 * LineHeight;
-                    Assert.Equal(expected, g.LineHeights[lines[0]], 0.75);
+                    if (show)
+                    {
+                        Assert.Single(lines);
+                        Assert.Equal(0.4 * BaseSize * Spacing, g.LineHeights[lines[0]], 0.75);
+                    }
+                    else
+                    {
+                        // Integration: a hidden name is half a line of black. It keeps its paragraph top (the section top)
+                        // but no line, so a section jump puts the section's first text line on the reading line.
+                        Assert.Empty(lines);
+                        var marker = g.Sections.Single(m => m.ParagraphIndex == section.ParagraphIndex);
+                        Assert.Equal(g.ParagraphTops[section.ParagraphIndex], marker.Top, 3);
+                        var next = Enumerable.Range(0, g.LineCount).First(i => g.LineTops[i] >= marker.Top);
+                        Assert.Equal(section.ParagraphIndex + 1, g.LineParagraphs[next]);
+                        Assert.Equal(marker.Top + (0.5 * LineHeight), g.LineTops[next], 0.75);
+                    }
                 }
             }
             finally
@@ -221,9 +234,13 @@ public class LayoutGeometryBuilderTests
         var (g, _, _, window) = Layout(T.Doc("a", "", "", "b"));
         try
         {
+            // Integration: empty paragraphs are space, not lines (start, line steps and paragraph steps skip them), but
+            // they keep increasing paragraph tops.
             Assert.Equal(4, g.ParagraphCount);
-            Assert.Equal(4, g.LineCount);
-            Assert.Equal([0, 1, 2, 3], g.LineParagraphs);
+            Assert.Equal(2, g.LineCount);
+            Assert.Equal([0, 3], g.LineParagraphs);
+            for (var p = 1; p < 4; p++) Assert.True(g.ParagraphTops[p] > g.ParagraphTops[p - 1], $"paragraph {p}");
+            Assert.Equal(g.ParagraphTops[3], g.LineTops[1], 3);
         }
         finally
         {

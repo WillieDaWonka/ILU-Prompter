@@ -58,10 +58,11 @@ internal sealed class OutputWindow : Window
         }
         else
         {
-            // --dev-output-on-primary: an ordinary, movable window sized to the surface.
+            // --dev-output-on-primary: an ordinary, movable window sized to the surface. Topmost like the real output, or
+            // on a single display it disappears behind the (maximised) control window as soon as that is clicked.
             WindowStyle = WindowStyle.SingleBorderWindow;
             ResizeMode = ResizeMode.NoResize;
-            Topmost = false;
+            Topmost = true;
             ShowInTaskbar = true;
             ShowActivated = false;
             SizeToContent = SizeToContent.WidthAndHeight;

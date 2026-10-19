@@ -176,6 +176,44 @@ public class EngineStepTests
         Assert.Equal(TestGeometry.PosOfLine(h.Geometry, 5), h.Pos, 9);
     }
 
+    /// <summary>Paragraphs 0, 2, 4, 6 have two lines each; 1, 3, 5 are empty (space, no lines), as the geometry builder
+    /// makes them for a .txt script with blank lines between paragraphs.</summary>
+    private static LayoutGeometry WithEmptyParagraphs()
+    {
+        double[] tops = [0, 100, 300, 400, 600, 700, 900, 1000];
+        int[] paragraphs = [0, 0, 2, 2, 4, 4, 6, 6];
+        return new LayoutGeometry("empty-paras", 1, 100, 1200, 1100, tops, Enumerable.Repeat(100.0, 8).ToArray(), paragraphs,
+            [0, 20, 0, 20, 0, 20, 0, 20], [0, 200, 300, 500, 600, 800, 900], Array.Empty<SectionMarker>(), 80);
+    }
+
+    [Fact]
+    public void ParagraphSteps_SkipParagraphsWithoutLines_InBothDirections()
+    {
+        var h = new EngineHarness(WithEmptyParagraphs(), new ViewportMetrics(1000, 400, 150));
+        double At(int line) => h.Geometry.LineCentre(line) - h.R;
+        Assert.Equal(At(0), h.Pos, 9);
+
+        h.Apply(EngineCommand.StepParagraphs(1));
+        h.Run(0.4);
+        Assert.Equal(At(2), h.Pos, 9); // paragraph 2, not the empty paragraph 1
+
+        h.Apply(EngineCommand.StepParagraphs(2));
+        h.Run(0.4);
+        Assert.Equal(At(6), h.Pos, 9); // two paragraphs with lines further: 4, then 6
+
+        h.Apply(EngineCommand.StepParagraphs(1));
+        h.Run(0.4);
+        Assert.Equal(At(6), h.Pos, 9); // last paragraph: nothing
+
+        h.Apply(EngineCommand.StepParagraphs(-1));
+        h.Run(0.4);
+        Assert.Equal(At(4), h.Pos, 9); // previous paragraph with lines (the empty 5 is skipped)
+
+        h.Apply(EngineCommand.StepParagraphs(-2));
+        h.Run(0.4);
+        Assert.Equal(At(0), h.Pos, 9);
+    }
+
     // ---- sections ----
 
     private static EngineHarness SectionHarness(PrompterSettings? settings = null) =>

@@ -51,6 +51,7 @@ public sealed class OutputHost : IOutputSurface, IFramePulse
     private PrompterSurface? _surface;
     private FrameClock _clock = new();
     private FrameStats? _stats;
+    private double _lastStatsPosition = double.NaN;
     private DisplaySleepGuard? _guard;
     private string? _chosenId;
     private bool _visible;
@@ -452,7 +453,8 @@ public sealed class OutputHost : IOutputSurface, IFramePulse
         _engine.Tick(timestamp);
         var position = _engine.ReadPosition();
         _surface!.SetPosition(position);
-        _stats?.Record(timestamp);
+        _stats?.Record(timestamp, moving: position != _lastStatsPosition);
+        _lastStatsPosition = position;
         if (position != _lastPulsePosition || timestamp - _lastPulseTimestamp > HeartbeatTicks)
         {
             _lastPulsePosition = position;

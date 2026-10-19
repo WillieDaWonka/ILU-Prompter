@@ -65,6 +65,7 @@ public sealed partial class SectionsViewModel : ObservableObject
     private LayoutGeometry? _lastGeometry;
     private double _lastSpeed = double.NaN;
     private int _lastCurrent = int.MinValue;
+    private bool _refreshing;
 
     [ObservableProperty]
     private SectionRowViewModel? _selected;
@@ -98,9 +99,19 @@ public sealed partial class SectionsViewModel : ObservableObject
         {
             _lastSections = sections;
             var selectedIndex = Selected?.Index ?? -1;
-            Rows.Clear();
-            foreach (var s in sections) Rows.Add(new SectionRowViewModel(s.Index, s.Name));
-            Selected = selectedIndex >= 0 && selectedIndex < Rows.Count ? Rows[selectedIndex] : null;
+            // Restoring the selection raises the list's SelectionChanged, which would "show the section in the editor"
+            // and pull the caret away from where you are typing (integration fix): ignore it while rebuilding.
+            _refreshing = true;
+            try
+            {
+                Rows.Clear();
+                foreach (var s in sections) Rows.Add(new SectionRowViewModel(s.Index, s.Name));
+                Selected = selectedIndex >= 0 && selectedIndex < Rows.Count ? Rows[selectedIndex] : null;
+            }
+            finally
+            {
+                _refreshing = false;
+            }
             _lastGeometry = null;
             _lastCurrent = int.MinValue;
             OnPropertyChanged(nameof(IsEmpty));
@@ -131,7 +142,7 @@ public sealed partial class SectionsViewModel : ObservableObject
 
     public void ShowInEditor(SectionRowViewModel? row)
     {
-        if (row is null) return;
+        if (row is null || _refreshing) return;
         _editing?.ShowSection(row.Index);
     }
 

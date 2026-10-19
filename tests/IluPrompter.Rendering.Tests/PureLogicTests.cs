@@ -398,6 +398,24 @@ public class FrameStatsTests
     }
 
     [Fact]
+    public void StillFrames_AreNotCounted_OnlyIntervalsTouchingAMovingFrame()
+    {
+        // Integration: while the prompt stands still WPF may render at 30 Hz and the preview gets 250 ms heartbeats.
+        var stats = new FrameStats("t", null, 60, TimeSpan.FromSeconds(1000), Freq);
+        long t = 1_000_000;
+        stats.Record(t, moving: true);
+        for (var i = 0; i < 10; i++) stats.Record(t += 16_667, moving: true);     // 10 moving intervals
+        stats.Record(t += 16_667, moving: false);                                 // motion just stopped: counts
+        for (var i = 0; i < 20; i++) stats.Record(t += 250_000, moving: false);  // heartbeats while still: ignored
+        stats.Record(t += 16_667, moving: true);                                  // motion starts again: counts
+
+        var r = stats.Summarise();
+        Assert.Equal(12, r.Frames);
+        Assert.Equal(0, r.OverThreshold);
+        Assert.Equal(16.667, r.Max, 2);
+    }
+
+    [Fact]
     public void SlowFrames_AreCounted_AndShowInThePercentiles()
     {
         var stats = new FrameStats("t", null, 60, TimeSpan.FromSeconds(1000), Freq);

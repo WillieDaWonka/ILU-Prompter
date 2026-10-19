@@ -385,6 +385,36 @@ public class PreviewTests
         Assert.True(margin.B > margin.R, "margin tint expected: " + margin);
     }
 
+    [WpfFact]
+    public void ClickingThePreview_TakesFocus_SoTheKeysGoToTheTransport()
+    {
+        var rig = new Rig();
+        var text = new System.Windows.Controls.TextBox();
+        var panel = new System.Windows.Controls.StackPanel();
+        panel.Children.Add(text);
+        panel.Children.Add(rig.Preview);
+        var window = new Window
+        {
+            WindowStyle = WindowStyle.None, ShowInTaskbar = false, ShowActivated = false, Left = -10000, Top = 0,
+            Width = 800, Height = 600, Content = panel,
+        };
+        window.Show();
+        try
+        {
+            text.Focus();
+            Assert.Same(text, System.Windows.Input.FocusManager.GetFocusedElement(window));
+            rig.Preview.RaiseEvent(new System.Windows.Input.MouseButtonEventArgs(System.Windows.Input.Mouse.PrimaryDevice, 0, System.Windows.Input.MouseButton.Left)
+            {
+                RoutedEvent = UIElement.MouseLeftButtonDownEvent,
+            });
+            Assert.Same(rig.Preview, System.Windows.Input.FocusManager.GetFocusedElement(window));
+        }
+        finally
+        {
+            window.Close();
+        }
+    }
+
     internal static BitmapSource Render(FrameworkElement element, int width, int height)
     {
         var bitmap = new RenderTargetBitmap(width, height, 96, 96, PixelFormats.Pbgra32);

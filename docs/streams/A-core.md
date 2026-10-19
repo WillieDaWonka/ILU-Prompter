@@ -168,6 +168,16 @@ dotnet test tests/IluPrompter.Core.Tests
 - No real-time (wall clock) behaviour is tested for the engine; the render loop's `dt` is whatever the caller feeds in.
 - Battery/Detail fields of `DeviceStatus` are stored and forwarded, nothing else uses them.
 
+## Integration changes (19 Oct 2026, see docs/streams/INTEGRATION.md)
+
+- The line table now holds text lines only (blank paragraphs and hidden section markers are space with a paragraph top).
+  `StepParagraphs` steps over paragraphs that have no lines in both directions (previously "previous paragraph" stuck on
+  an empty paragraph).
+- `SecondsRemaining` in Display scrolling is the distance from the current line's centre to END's centre in base lines
+  (gaps included), at the set speed with the engine's curve maximum; Line scrolling still counts text lines. It changes
+  only when the line does, so steady ticks still allocate nothing. `SectionDurations` and `WordsPerMinute` are
+  distance-based too; new helper `TimeEstimator.SecondsForBaseLines`.
+
 ## CONTRACT-REQUESTs
 
 None. (Notes for the integrator: `Format(double)` and `IDisposable` above are optional conveniences; nothing depends on

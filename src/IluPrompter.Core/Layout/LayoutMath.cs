@@ -252,28 +252,52 @@ public static class TimeEstimator
         return lpm < 1e-6 ? double.PositiveInfinity : lines * 60.0 / lpm;
     }
 
-    /// <summary>Estimated duration of each section (lines from its marker to the next marker or END) at the given speed.
-    /// A speed of zero gives <see cref="TimeSpan.MaxValue"/> for every section that has lines (formatted as "--").</summary>
+    /// <summary>Seconds to scroll <paramref name="baseLines"/> base line heights of distance (fractional) at the given
+    /// speed: what Display scrolling takes, since it moves lpm x BaseLineHeight per minute whatever is on the lines.</summary>
+    public static double SecondsForBaseLines(double baseLines, double speed, SpeedCurveSettings curve)
+    {
+        if (!(baseLines > 1e-9))
+        {
+            return 0.0;
+        }
+
+        var lpm = Math.Abs(SpeedCurve.ToLinesPerMinute(speed, curve));
+        return lpm < 1e-6 ? double.PositiveInfinity : baseLines * 60.0 / lpm;
+    }
+
+    /// <summary>Estimated Display-scrolling duration of each section at the given speed: the distance from the section's
+    /// start position (its first line on the reading line) to the next section's, or to the END position, in base
+    /// lines. Paragraph gaps, empty lines and hidden markers take scrolling time too, so this is distance, not a count of
+    /// text lines (integration fix). A speed of zero gives <see cref="TimeSpan.MaxValue"/> for every section with
+    /// content (formatted as "--").</summary>
     public static IReadOnlyList<TimeSpan> SectionDurations(LayoutGeometry geometry, double speed, SpeedCurveSettings curve)
     {
         ArgumentNullException.ThrowIfNull(geometry);
         var sections = geometry.Sections;
         var result = new TimeSpan[sections.Count];
-        var lineTops = geometry.LineTops;
-        var lineCount = lineTops.Count;
+        var lineHeight = geometry.BaseLineHeight;
+        var endCentre = geometry.EndTop + (lineHeight / 2.0);
         for (var i = 0; i < sections.Count; i++)
         {
-            var from = sections[i].Top;
-            var to = i + 1 < sections.Count ? sections[i + 1].Top : geometry.EndTop;
-            var first = LowerBound(lineTops, from);
-            var last = LowerBound(lineTops, to);
-            var lines = Math.Max(0, Math.Min(last, lineCount) - first);
-            result[i] = ToTimeSpan(SecondsForLines(lines, speed, curve));
+            var from = StartCentre(geometry, sections[i].Top, endCentre);
+            var to = i + 1 < sections.Count ? StartCentre(geometry, sections[i + 1].Top, endCentre) : endCentre;
+            var baseLines = lineHeight > 0 && double.IsFinite(to - from) ? Math.Max(0.0, to - from) / lineHeight : 0.0;
+            result[i] = ToTimeSpan(SecondsForBaseLines(baseLines, speed, curve));
         }
 
         return result;
     }
 
+    /// <summary>Centre of the first line at or below <paramref name="top"/> (where a jump there puts the reading line), or
+    /// the END centre if there is none.</summary>
+    private static double StartCentre(LayoutGeometry geometry, double top, double endCentre)
+    {
+        var first = LowerBound(geometry.LineTops, top);
+        return first < geometry.LineCount ? Math.Min(geometry.LineCentre(first), endCentre) : endCentre;
+    }
+
+    /// <summary>Reading pace in Display scrolling: words per base line of script height (first line to END), times lpm.
+    /// Falls back to words per laid-out line when the geometry has no usable heights.</summary>
     public static double WordsPerMinute(LayoutGeometry geometry, double linesPerMinute)
     {
         if (geometry.LineCount == 0 || !double.IsFinite(linesPerMinute))
@@ -281,7 +305,9 @@ public static class TimeEstimator
             return 0;
         }
 
-        return Math.Abs(linesPerMinute) * geometry.WordCount / geometry.LineCount;
+        var baseLines = geometry.BaseLineHeight > 0 ? (geometry.EndTop - geometry.LineTops[0]) / geometry.BaseLineHeight : 0.0;
+        var units = double.IsFinite(baseLines) && baseLines >= 1.0 ? baseLines : geometry.LineCount;
+        return Math.Abs(linesPerMinute) * geometry.WordCount / units;
     }
 
     /// <summary>House format: "6m:42s" under an hour, "1h:05m" from an hour; "--" for infinity/NaN
