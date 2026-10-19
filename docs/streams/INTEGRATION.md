@@ -101,16 +101,11 @@ Screenshots (`docs/streams/screens/`): `integration-02-output-shown.png`, `-03-p
 ## Remaining gaps, by priority
 
 1. **Second-display checks** S2 at real sizes, S3, S5, S8, and S4 after the user's go-ahead.
-2. **An edit or layout change while live hitches the output** for the rebuild (100–150 ms warm, about 0.5 s for the
-   first rebuild after start in Release). Options: defer output rebuilds while Playing until the next pause or a quiet
-   moment, make `TextRange.Load` cheaper (build runs directly instead of loading XAML), or ReadyToRun publishing for
-   the cold case.
-3. **Editing above the reading line while live jumps the prompt by a paragraph**: relayout keeps the paragraph *index*.
-   Needs the editor to shift the anchor by the edit's paragraph delta (DESIGN open question "editing while live").
+2. *(Fixed, see "Fixed after integration: live edits" below.)*
+3. *(Fixed, see below.)*
 4. **Section list and transport keys**: by DESIGN the list is in Transport mode, so Up/Down change speed and Esc pauses
    instead of moving in the list / closing the flyout. Needs a design decision.
-5. **Margin and reading-line drags rebuild the output on every mouse move** (coalesced) — stutter on long scripts while
-   live; consider applying on release, or viewport-only for the reading line (already cheap).
+5. *(Fixed, see below: margin drags apply on release; reading-line drags were already viewport-only.)*
 6. `TimeEstimator.SectionDurations` uses the default curve maximum (±10); custom Min/Max speed skews section times
    (the engine's own time-left uses the right maximum).
 7. Blank lines in `.txt` imports still make two-line gaps (0.5 gap + empty line + 0.5 gap); they are no longer stops.
@@ -120,3 +115,77 @@ Screenshots (`docs/streams/screens/`): `integration-02-output-shown.png`, `-03-p
 9. UI Automation tree walks over the 6,000-word editor take seconds and load the UI thread (seen with the driver);
    screen readers may feel this. Preview frame stats at a motion start include the heartbeat gap (read with care).
 10. Poppins Bold/Italic not bundled (bold renders SemiBold; italic is synthetic) — DESIGN open question.
+
+## Fixed after integration: live edits (19 Oct 2026)
+
+Branch `worktree-agent-a8488b382b2655bde`. Invariant (user): *while the output shows, playing or paused, no edit anywhere
+may move the text on the reading line*, and an edit or layout change must not freeze the output.
+
+**Root causes.**
+- *Prompt jumps (gap 3).* `ScrollEngine.ApplyNewGeometry` kept the reading anchor's paragraph **index**, so a paragraph
+  inserted or deleted above moved the prompt by that paragraph; a running line/paragraph step was snapped to its target
+  (a jump mid-step); a reading line in the gap between paragraphs was clamped to the line above (a jump of up to the gap).
+  Second cause: the two surfaces rebuilt independently, so whichever finished first re-anchored the engine and the other
+  showed its old document at the new position until its own rebuild ended (tens of ms of wrong text on the output).
+- *Freezes (gaps 2, 5).* Every edit, layout setting or margin-drag move rebuilt a whole FlowDocument on the output thread
+  (XAML load, styling, WPF layout, geometry: 50–125 ms here, 0.5 s cold) and again on the UI thread for the preview.
+  Patching paragraphs into the live document there would not have been enough: measured, WPF relays out everything
+  after the changed paragraph (about 25 % of a full layout for an edit near the top).
+
+**Changes.**
+- Engine (A): `AnchorMap` diffs the old and new paragraph texts (prefix/suffix, unique-text matching, character-level
+  inside edited paragraphs; deleted text maps to where it was) and `LayoutMapping` ties the reading point to the nearest
+  text line (fraction in it, or distance from its edge in a gap). Relayout maps both the step's destination and the
+  visible position (a running step continues), and keeps the line-scrolling step timer. `LayoutGeometry.ParagraphTexts`
+  carries the texts (the geometry builder fills it).
+- Layout thread (C): `PictureWorker` ("ILU Layout") owns the only output FlowDocument, follows snapshots/settings/output
+  size, patches script edits (`XamlParagraphs` splits the snapshot XAML; only changed paragraphs are built and swapped
+  in), builds geometry and freezes each paragraph's drawings into a `PromptPicture`; it warms up at startup. Both
+  surfaces show the same frozen picture (`PicturePresenter`, paragraphs from two screens above to three below the view;
+  unchanged drawings keep their visuals) and install it with its frame and `SetLayout` in one dispatcher operation. A
+  surface a frame behind the engine maps the position onto its own picture (`ReadPosition(out geometry)`, a seqlock).
+- Preview margin drags apply on release (overlay follows the pointer). Publish uses ReadyToRun.
+- Contracts: ARCHITECTURE §2.4 (relayout rule, `ReadPosition(out)`), §2.5 (`ParagraphTexts`, AnchorMap), §3 (layout
+  thread, rules 1–4 and 11), §4.C amended. Factory, geometry-builder and snapshot contracts unchanged.
+
+**Measurements** (this laptop, 20-page sample, dev output 960 × 540, Release). Today the machine was used through a
+remote session in which WPF presented only about 3–5 frames a second in *every* build (`main` too, also with no edits),
+so frame-interval statistics could not show smoothness; the comparable number is how long the output thread is blocked.
+`LiveEditFrameTests` (opt-in, `ILU_VISUAL_TESTS=1 ILU_PERF=1`) measures it with a dispatcher hook, the same file run on
+`main` for "before":
+
+| Playing at speed 3 | before (`main`) | after |
+|---|---|---|
+| Edits above the reading line every 0.6 s (20): longest output-thread operation | 123–125 ms, 20 of 20 over 16 ms | 2.2–6 ms, none over 8 ms |
+| Layout changes, lines visible 8 ↔ 7 (6): longest output-thread operation | 50–72 ms, 6 of 6 over 16 ms | 0.5–5 ms, none over 8 ms |
+| Allocated / GC pause in the 12 s edit phase | 330 MB / 172 ms (output only; the app built the preview too) | 168 MB / 61 ms |
+| Layout-thread work per edit | — | 5–33 ms, 3–8 MB (most for edits at the top) |
+| Full layout (style or size change) | 50–125 ms on the output thread | 50–160 ms on the layout thread, install ≤ 5 ms |
+| First output after start | 113–163 ms rebuild on the output thread (0.5 s at integration) | install 0.7–1.0 ms (warm-up 64–106 ms and first layout 146–204 ms happen at startup) |
+
+The real app driven through UI Automation (editor's Insert section marker / Undo at the top of the script while
+playing): before, `Slow rebuild` 52–113 ms per edit on the output and 53–94 ms on the UI thread; after, installs of
+0.4–2 ms on both surfaces with 374–382 paragraph visuals kept. ReadyToRun (published, self-contained): first full layout
+146–155 ms instead of 166–204 ms, +12 MB.
+
+**Layout changes: immediate or at the next pause?** A full relayout still costs 50–160 ms (0.5 s cold), but now on the
+layout thread; the output installs the result in under 5 ms. So "apply immediately with a single hitch" no longer has a
+hitch: changes apply immediately (implemented), and the only cost is that the new layout appears about 0.1–0.2 s after
+the change. Recommendation: keep it so; "apply at the next pause" would only make sense again if a frame miss is ever
+seen at a layout change on the venue machine. Margin drags lay out once, on release.
+
+**Tests.** Core: `AnchorMapTests`, `EngineLiveEditTests` (insert/delete above incl. a range of 20, reflow above, typing
+before/after the anchor, deleting the anchor's text, pasting 120 paragraphs, undo/redo, `##` markers, edits below and on
+both sides, gaps, playing and paused, line scrolling incl. mid-step and the step timer, the seqlock under a racing
+writer). Rendering (`[WpfFact]`, real factory and geometry builder): `PictureBuilderTests` (14 kinds of edit: a patched
+picture equals a fresh layout, tables and pixels), `LiveEditSurfaceTests` (a lagging surface shows the same text; the
+pixels around the reading line are unchanged by an edit above; steady frames allocate nothing new), `PictureWorkerTests`,
+and a preview test that margin drags apply on release.
+
+**Still open.** Re-run S2 frame statistics in a normal session or on the venue machine (expected: no frame over 1.5 ×
+nominal at an edit; not verifiable here today). GC: the layout thread still allocates 3–8 MB per edit (about 3.5 MB of it
+the geometry builder's per-line drawings); single gen-1 pauses of up to about 10 ms occurred (as before the change) and
+stop every thread. If S2 shows misses while typing, make the geometry tables incremental for unchanged paragraphs. The
+editor still saves the whole script to XAML on the UI thread for each snapshot (control window only). Setting
+`TranslateTransform.Y` boxes 24 bytes a frame (unchanged). `MonitorServiceTests.RealEnumeration…` fails on this machine
+today (empty StableId under the remote display adapter), on `main` as well.
