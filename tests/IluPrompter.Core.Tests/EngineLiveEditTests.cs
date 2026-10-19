@@ -307,9 +307,15 @@ public class EngineLiveEditTests
     {
         var h = new EngineHarness(ScriptLayout.Build(ScriptLayout.Script(), 1));
         _ = h.Engine.ReadPosition(out _);
-        var before = GC.GetAllocatedBytesForCurrentThread();
-        for (var i = 0; i < 10_000; i++) _ = h.Engine.ReadPosition(out _);
-        Assert.Equal(0, GC.GetAllocatedBytesForCurrentThread() - before);
+        // Quietest of several windows: tiered JIT can allocate once while it recompiles (as in EngineThreadingTests).
+        var quietest = long.MaxValue;
+        for (var window = 0; window < 5; window++)
+        {
+            var before = GC.GetAllocatedBytesForCurrentThread();
+            for (var i = 0; i < 10_000; i++) _ = h.Engine.ReadPosition(out _);
+            quietest = Math.Min(quietest, GC.GetAllocatedBytesForCurrentThread() - before);
+        }
+        Assert.Equal(0, quietest);
     }
 
     [Fact]

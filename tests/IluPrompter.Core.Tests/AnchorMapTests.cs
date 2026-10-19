@@ -131,8 +131,14 @@ public class AnchorMapTests
         to.RemoveRange(10, 5);
         var map = new AnchorMap(from, to);
         _ = map.Map(new DocumentAnchor(100, 4));
-        var before = GC.GetAllocatedBytesForCurrentThread();
-        for (var i = 0; i < 1000; i++) _ = map.Map(new DocumentAnchor(i % 200, i % 30));
-        Assert.Equal(0, GC.GetAllocatedBytesForCurrentThread() - before);
+        // Quietest of several windows: tiered JIT can allocate once while it recompiles (as in EngineThreadingTests).
+        var quietest = long.MaxValue;
+        for (var window = 0; window < 5; window++)
+        {
+            var before = GC.GetAllocatedBytesForCurrentThread();
+            for (var i = 0; i < 1000; i++) _ = map.Map(new DocumentAnchor(i % 200, i % 30));
+            quietest = Math.Min(quietest, GC.GetAllocatedBytesForCurrentThread() - before);
+        }
+        Assert.Equal(0, quietest);
     }
 }
