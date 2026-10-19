@@ -217,7 +217,7 @@ public sealed partial class LiveViewModel : ObservableObject
         get => _speed;
         set
         {
-            var v = Math.Round(Math.Clamp(double.IsNaN(value) ? 0 : value, _settings.Current.Scroll.MinSpeed, _settings.Current.Scroll.MaxSpeed), 1);
+            var v = Math.Round(Math.Clamp(double.IsNaN(value) ? 0 : value, _settings.Current.Scroll.MinSpeed, _settings.Current.Scroll.MaxSpeed), 1, MidpointRounding.AwayFromZero);
             if (Math.Abs(_speed - v) < 0.0001) return;
             _speed = v;
             OnPropertyChanged();
