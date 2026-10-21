@@ -8,6 +8,9 @@ WPF on .NET 8 (`net8.0-windows`), self-contained folder build, no installer, no 
 
 ## Running it
 
+- **Just want to run it?** Download `ILUPrompter-<version>-win-x64.zip` from
+  [Releases](https://github.com/WillieDaWonka/ILU-Prompter/releases), unzip it anywhere and start `ILUPrompter.exe`
+  (no installer, no admin, no .NET install needed).
 - **Double-click `run_app.bat`.** It builds a Release copy and starts it. With a second display extended, press
   **F11** (or *Show output*) to put the prompt on it.
 - **Only one screen?** Double-click `run_app_single_screen.bat`; the output opens as a window on this screen.
