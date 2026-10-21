@@ -195,10 +195,10 @@ internal static class ContourRing
         now.RenderTransform = new RotateTransform(shuttle.RingK * Step, cx, cy);
     }
 
-    /// <summary>The jog wheel's dimple: 36 degrees per detent, 10 detents a turn, at a radius from the centre.</summary>
-    public static void PlaceDimple(Ellipse dimple, double cx, double cy, double radius, int detent)
+    /// <summary>The jog wheel's dimple at a radius from the centre, <paramref name="degrees"/> clockwise from the top (see <see cref="ContourJog"/>).</summary>
+    public static void PlaceDimple(Ellipse dimple, double cx, double cy, double radius, double degrees)
     {
-        var angle = detent * 36.0 * Math.PI / 180.0;
+        var angle = degrees * Math.PI / 180.0;
         Canvas.SetLeft(dimple, cx + (radius * Math.Sin(angle)) - (dimple.Width / 2));
         Canvas.SetTop(dimple, cy - (radius * Math.Cos(angle)) - (dimple.Height / 2));
     }

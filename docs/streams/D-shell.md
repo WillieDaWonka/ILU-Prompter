@@ -150,23 +150,39 @@ space stays empty when the panel is hidden; **no F9 / Ctrl+F9**, the panel is mo
   line. No `CompositionTarget.Rendering`, storyboard, animation or timer of its own: every change is an instant step. Lit = bound and pressed or within 300 ms of the last edge
   (400 ms for the wheel and jog, burst ends after 2 s), neutral flash for unbound, dim for unbound at rest; "bound" follows the current scrolling mode and the current settings
   bindings. Four drawings as `Canvas` XAML from `docs/design/*.svg` with parts named by ControlId, painted from `Ilu.Brush.*` only (`DrawingPainter`); sticks, triggers, wheel
-  treads, ring arc and jog dimple are set from rounded values.
-- **`--demo-input`** (dev only, logs a warning, never default): `Services/DemoInput` feeds a scripted loop of fake mouse-wheel-over-preview events through `IInputSink.Submit`
-  from a background thread. It never uses Xbox, Contour or a dedicated mouse (a test asserts it).
+  treads, ring arc and jog angle are set from rounded values. The ShuttlePRO v2 drawing was redrawn on 20 Oct 2026 from the unit's product photo (see "ShuttlePRO v2 layout" below).
+- **`--demo-input`** (dev only, logs a warning, never default): `Services/DemoInput` feeds a scripted loop of fake mouse-wheel-over-preview events, plus six jog-wheel clicks forward
+  (2.0 s) and six back (12.0 s) from a made-up Contour source (`demo-input:jog`, not a device), through `IInputSink.Submit` from a background thread. It never uses Xbox, a real Contour
+  or a dedicated mouse (a test asserts the sources). The router counts the jog clicks only when Jog-shuttle is the chosen controller (as for a real one), so with the default
+  mouse wheel they are ignored; choosing Jog-shuttle starts the real Contour provider, which is why the build's own runs never did.
 - Screenshots (`docs/streams/screens/`, run with `--settings-file <throwaway> --window-size WxH`, mouse wheel, no device): `livepanel-1920x1080-controller.png`,
   `-controller-wheel.png`, `-output-layout.png`, `-hidden.png`, `livepanel-1366x768-bar.png`, `-flyout.png`. The Xbox, ShuttlePRO and ShuttleXpress drawings need hardware to be
-  selected, so they are rendered from fake inputs by `DrawingRenderTests` (set `ILU_DRAWING_PNG_DIR`): `livepanel-drawing-*.png`.
+  selected, so they are rendered from fake inputs by `DrawingRenderTests` (set `ILU_DRAWING_PNG_DIR`): `livepanel-drawing-*.png` (the ShuttlePRO: `-shuttlepro.png` normal with a lit button and the ring, `-normal-turned.png` (dimples turned by three jog clicks), `-reverse`, `-missing`; the ShuttleXpress `-shuttlexpress.png`; a test also renders every button lit in turn, written only with the variable set).
 - Tests: `ControllerPanelTests` (input to lit state, hold, burst, axes, ring, jog, labels, unbound / unknown, status states, battery, filtering, no marshalling per input),
   `LivePanelTests` (tabs, hidden, persistence, fit by height, flyout rules, keys), `DrawingRenderTests`, `ThemeTokenTests` (new size tokens), settings round-trip in Core.Tests.
 
-**Check the ShuttlePRO v2 button layout against the venue's unit.** The 15 buttons are drawn schematically in the provider's numbering (rows of 4 and 5, two either side of the ring, two
-thumb buttons); the real unit's layout has not been compared. Edit `ShuttleProDrawing.xaml` if it differs.
+**ShuttlePRO v2 layout (redrawn 20 Oct 2026).** `Views/Drawings/ShuttleProDrawing.xaml` and `docs/design/controller-shuttlepro.svg` are drawn from the unit's product photo (a vendor photo,
+used for reference only and not in the repo): a pear-shaped body 104 x 154 in the 320 x 160 design box, four ovals on a gentle arc, five on an arc curving down at the ends (the outer two
+lower, at the shoulders, angled), the ring (outer r 28) round the jog disc (r 19) with three dimples, a tall side button each side, and four long curved buttons below the ring. Both
+files come from one script's numbers, so they agree; the body is wider than the real unit's (about 0.67 rather than 0.5 of its height) because the box is only 160 tall and the buttons
+would otherwise be too small to read. The "ShuttlePRO v2" wordmark is left out.
+- **Numbering (confidence: good, verify on the device).** `Logic/ShuttleProLayout.cs` is the ONE table from the provider's logical numbers (raw bit + 1, unchanged in `ContourModels.cs`) to
+  positions; the drawing parts are named by position (`Pos_*`), so a wrong guess is a one-line fix. Source: Contour's ShuttlePRO v2 manual, as reproduced at
+  https://www.twistidea.com/manual/contour-shuttle-pro-2-manual/ ("numbered from left to right, from the top row to the bottom row, with the exception of the side buttons that are numbered
+  the last": 1 to 4 top row, 5 to 9 second row, 10 and 11 the third row (two buttons below the ring), 12 and 13 the fourth row (above the palm rest), 14 the left side button, 15 the
+  right). Consistent with the LinuxCNC `shuttle` driver (https://linuxcnc.org/docs/html/drivers/shuttle.html: the older ShuttlePRO has 13 buttons, the ShuttlePRO2 15, in bits 0 to 14,
+  so the two extra, 14 and 15, are the v2's side buttons) and with the Cinelerra-GG manual (K14 and K15 work only on the v2). One community project, shuttle-go
+  (https://github.com/smcnally/shuttle-go), uses its own names (F1 to F9, M1 and M2, B1 to B4) and no bit numbers, so it neither confirms nor contradicts it. Not checked on a unit (no
+  device is touched, by rule): the order within the two curved pairs (10 upper left, 11 upper right, 12 lower left, 13 lower right) follows the manual's "left to right" and is the part
+  most worth a quick test. The default bindings stay by number (DESIGN.md says where they physically sit now: button 3 is the top row's third, not a "centre" one).
+- **Jog detents per revolution: 10** (`ContourJog.DetentsPerRevolution`, so 36 degrees a click), from the LinuxCNC `shuttle` driver manual ("a 10 counts/revolution jog wheel with detents",
+  for the ShuttleXpress, ShuttlePRO and ShuttlePRO2). One source; Contour's own manual gives no figure. Verify on the device (a one-constant fix).
 
 Deviations from DESIGN.md in this build: the small body leaves the keyboard sentence out of the Missing state (it stays in the chip's tooltip) and drops the detail line;
 a persistent row for a stick shows "LS" or "LS X" / "LS Y" when both axes are bound; a quiet axis (inside its deadzone) does not count as "input" for "No input yet" and the last line;
 the wheel and jog action label is the router's own conversion of the burst ("Speed - 1.5", "Next line"). A generic HID name draws the ShuttlePRO.
 
-Gaps: the Xbox, ShuttlePRO and ShuttleXpress drawings were seen only as renders from fake inputs, not live (no hardware selected, by rule); the LIVE (output on) look of the panel was not
+Gaps: the ShuttlePRO numbering and the jog's 10 clicks a turn were taken from documents, not a unit; the Xbox, ShuttlePRO and ShuttleXpress drawings were seen only as renders from fake inputs, not live (no hardware selected, by rule); the LIVE (output on) look of the panel was not
 seen on a second display; the small-body Missing layout is tight at the Narrow tier.
 
 ## CONTRACT-REQUEST

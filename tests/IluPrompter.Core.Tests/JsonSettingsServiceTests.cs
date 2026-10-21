@@ -289,6 +289,19 @@ public sealed class JsonSettingsServiceTests : IDisposable
     }
 
     [Fact]
+    public void AnOldSettingsFile_WithFieldsNoLongerRead_StillLoads()
+    {
+        // two window fields an older build wrote and this one no longer has: unknown fields are ignored
+        var old1 = "jog" + "FaceStep";
+        var old2 = "jog" + "FaceShown";
+        WriteRaw("{ \"controlWindow\": { \"" + old1 + "\": 2, \"" + old2 + "\": false, \"width\": 1400, \"livePanelOpen\": false } }");
+        var s = Create();
+        s.Load();
+        Assert.Equal(1400, s.Current.ControlWindow.Width);   // the unknown fields are ignored; the rest of the file is read
+        Assert.False(s.Current.ControlWindow.LivePanelOpen);
+    }
+
+    [Fact]
     public void AnUnknownTabNumber_FallsBackToController()
     {
         WriteRaw("""{ "controlWindow": { "livePanelTab": 7, "livePanelOpen": false } }""");

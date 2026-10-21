@@ -131,19 +131,23 @@ public static class ControllerModelBuilder
 
     /// <summary>
     /// The ShuttlePRO v2 drawing (the venue's unit) is the default for a jog-shuttle: it is drawn when the device's name says
-    /// PRO, when no name is known yet, and whenever a button above 5 has been seen. Only a device that names itself a
-    /// ShuttleXpress and has shown no button above 5 gets the ShuttleXpress drawing.
+    /// PRO, when no device has been found, and whenever a button above 5 has been seen. Only a device that was found and
+    /// names itself a ShuttleXpress (and not a PRO) and has shown no button above 5 gets the ShuttleXpress drawing. (With
+    /// nothing plugged in the provider reports the generic name "Contour ShuttleXpress / PRO", which must not pick the Xpress.)
     /// </summary>
     public static ControllerDrawingKind DrawingFor(ControllerKind kind, DeviceStatus? status, ControllerTableSnapshot table) => kind switch
     {
         ControllerKind.MouseWheel => ControllerDrawingKind.Mouse,
         ControllerKind.Xbox => ControllerDrawingKind.Xbox,
-        ControllerKind.JogShuttle =>
-            (status?.DisplayName?.Contains("Xpress", StringComparison.OrdinalIgnoreCase) ?? false) && table.MaxShuttleButton <= 5
-                ? ControllerDrawingKind.ShuttleXpress
-                : ControllerDrawingKind.ShuttlePro,
+        ControllerKind.JogShuttle => IsShuttleXpress(status, table) ? ControllerDrawingKind.ShuttleXpress : ControllerDrawingKind.ShuttlePro,
         _ => ControllerDrawingKind.None,
     };
+
+    private static bool IsShuttleXpress(DeviceStatus? status, ControllerTableSnapshot table) =>
+        status is { Connection: DeviceConnection.Connected or DeviceConnection.Disconnected, DisplayName: { } name }
+        && name.Contains("Xpress", StringComparison.OrdinalIgnoreCase)
+        && !name.Contains("PRO", StringComparison.OrdinalIgnoreCase)
+        && table.MaxShuttleButton <= 5;
 
     // ===== lit state =====
 
@@ -268,7 +272,7 @@ public static class ControllerModelBuilder
     private static (ControllerFrame, List<ControllerRow>, string[]) ShuttleFrame(ControllerBuildInput i, ControllerDrawingKind drawing)
     {
         var shuttle = i.Input.Shuttle;
-        var count = drawing == ControllerDrawingKind.ShuttlePro ? 15 : 5;
+        var count = drawing == ControllerDrawingKind.ShuttlePro ? ShuttleProLayout.ButtonCount : 5;
         var ids = Enumerable.Range(1, count).Select(ControlIds.ShuttleButton).ToArray();
         var looks = ButtonLooks(i, ids, shuttle.Buttons);
 
@@ -280,13 +284,13 @@ public static class ControllerModelBuilder
         i.Table.Relatives.TryGetValue(ControlIds.JogWheel, out var rel);
         var jogRole = shuttle.Jog.For(i.Mode);
         var jogLit = ControllerInputTable.WithinRelativeHold(rel.LastMs, i.NowMs);
-        var dimple = Mod((int)Math.Round(rel.Total, MidpointRounding.AwayFromZero), 10);
+        var steps = (int)Math.Round(rel.Total, MidpointRounding.AwayFromZero);
 
         var frame = Sign(new ControllerFrame
         {
             Kind = drawing,
             Buttons = looks,
-            Shuttle = new ShuttleFrame(ringBinding is not null, k, arc, jogRole != RelativeRole.None, dimple, jogLit),
+            Shuttle = new ShuttleFrame(ringBinding is not null, k, arc, jogRole != RelativeRole.None, steps, jogLit),
         });
 
         var rows = new List<ControllerRow>();
@@ -413,7 +417,7 @@ public static class ControllerModelBuilder
         foreach (var s in frame.Sticks) sb.Append("|S").Append(s.Id).Append(s.Bound ? 'b' : 'u').Append((int)s.Press).Append(',').Append(s.DotDx).Append(',').Append(s.DotDy).Append(',').Append(s.DeadzoneRadius.ToString("0.0", CultureInfo.InvariantCulture)).Append(',').Append((int)s.Dot);
         foreach (var t in frame.Triggers) sb.Append("|T").Append(t.Id).Append(t.Bound ? 'b' : 'u').Append(',').Append(t.FillPx).Append(',').Append(t.TickOffsetFromTop.ToString("0.0", CultureInfo.InvariantCulture)).Append(',').Append((int)t.Fill);
         if (frame.Wheel is { } w) sb.Append("|W").Append(w.Bound ? 'b' : 'u').Append(',').Append(w.TreadPhase).Append(w.UpLit ? 'U' : '-').Append(w.DownLit ? 'D' : '-');
-        if (frame.Shuttle is { } h) sb.Append("|H").Append(h.RingBound ? 'b' : 'u').Append(',').Append(h.RingK).Append(',').Append((int)h.RingArc).Append(',').Append(h.JogBound ? 'b' : 'u').Append(',').Append(h.JogDimple).Append(h.JogLit ? 'L' : '-');
+        if (frame.Shuttle is { } h) sb.Append("|H").Append(h.RingBound ? 'b' : 'u').Append(',').Append(h.RingK).Append(',').Append((int)h.RingArc).Append(',').Append(h.JogBound ? 'b' : 'u').Append(',').Append(h.JogAngle.ToString("0", CultureInfo.InvariantCulture)).Append(h.JogLit ? 'L' : '-');
         return frame with { Signature = sb.ToString() };
     }
 

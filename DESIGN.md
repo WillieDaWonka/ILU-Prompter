@@ -933,13 +933,27 @@ the right, joined by a dashed `line-strong` callout.
   nothing.
 
 **Contour ShuttleXpress (5 buttons) and ShuttlePRO v2 (15 buttons)** (`controller-shuttlexpress.svg`,
-`controller-shuttlepro.svg`). The PRO's button layout is schematic and follows the provider's numbering (left to
-right, top to bottom); check it against the unit before building (open question 6).
+`controller-shuttlepro.svg`). The PRO is drawn from the venue unit's product photo (20 Oct 2026), not schematically: a tall
+pear-shaped body (a wide rounded top, narrowing gently to a long rounded palm rest; the controls fill the top 65 %), and
+Contour's own button numbering (left to right, top row to bottom row, the side buttons last):
+- **1 to 4**: the top row, four ovals on a gentle upward arc.
+- **5 to 9**: the second row of five, on an arc that curves down at the ends: 6, 7 and 8 just below the top row, 5 and 9
+  lower and further out, at the shoulders, angled.
+- **The shuttle ring** (±7) around the **jog wheel**, centred below those two rows; the jog wheel has three finger dimples
+  in a triangle.
+- **14 and 15**: a tall rounded side button each side of the ring, left and right.
+- **10 and 11**: the upper pair of four long curved buttons below the ring, left and right; **12 and 13**: the lower pair,
+  above the palm rest, left and right. Each pair curves like a bracket round the bottom of the ring.
+So the default bindings (button 3 Play / pause, 2 / 4 Paragraphs, 1 / 5 Sections, 6 Blank, 7 Jump to start, 8 Switch mode)
+sit on the top row (1 to 4), then the second row (5 to 8), with 9 to 15 unbound. The numbering is from Contour's manual;
+verify on the device (`Logic/ShuttleProLayout.cs` is the one table, a one-line fix per button). The model's name is not
+drawn on it (the photo's wordmark is left out as clutter).
 - Shuttle ring (`Ring`): an annulus with 15 position ticks at 15° steps, −105° to +105° from the top. Position k =
   round(value × 7). A filled arc band runs from the top to 15k°; the tick at k is drawn as "position now". At k = 0
   there is no band and the top tick is `text-muted`.
-- Jog wheel (`Jog`): a circle with a dimple at 36° × (detent count mod 10), stepping per poll; its edge lights for
-  400 ms after a detent.
+- Jog wheel (`Jog`): a circle (r 19 on the ShuttlePRO, r 32 on the ShuttleXpress) that turns 36° a click (10 clicks a
+  turn, `ContourJog.DetentsPerRevolution`), clockwise for a click forward, set in one step per poll: three dimples in a
+  triangle (the ShuttleXpress: one) turned by the jog clicks. Its edge lights for 400 ms after a detent.
 - Buttons light on press; the ShuttleXpress's five sit on an arc above the ring, rotated to it.
 
 **Info column.**
@@ -1217,7 +1231,7 @@ not exist: pausing is always enough.
 |---|---|---|---|---|---|---|
 | Mouse wheel (over the preview) | Display: one notch ±0.5 | middle click | Line: one notch = one line | | | |
 | Xbox controller | right trigger forward, left trigger reverse (analogue) | A | D-pad up / down | LB / RB | D-pad left / right | View button |
-| Jog-shuttle | shuttle ring (±7 positions) | button 3 (the centre one) | jog wheel, one click = one line | buttons 2 / 4 | buttons 1 / 5 | button 6 (ShuttlePRO) |
+| Jog-shuttle | shuttle ring (±7 positions) | button 3 (top row, third from the left) | jog wheel, one click = one line | buttons 2 / 4 | buttons 1 / 5 | button 6 (ShuttlePRO) |
 
 Also bound on the ShuttlePRO v2: button 7 Jump to start, button 8 Switch mode. Not bound by default: the mouse's side
 buttons; Xbox B, X, Y, Menu, both sticks and stick presses; ShuttlePRO buttons 9 to 15. (This row was corrected on
@@ -1432,10 +1446,11 @@ ways. No colour tokens are new.
 4. **App icon**: the proposal above, or something else?
 5. **Hiding the live panel**: the space it frees stays empty (proposed), so nothing moves mid-show. The alternative
    lets the preview grow, which only helps outputs taller than 16:9 and moves the transport down.
-6. **ShuttlePRO v2 layout**: the drawing places its 15 buttons as rows of 4 and 5, two either side of the ring and
-   two thumb buttons, numbered left to right, top to bottom. Please check against the venue's unit (or a photo), and
-   whether the venue has a ShuttleXpress, a ShuttlePRO v2, or both. (The venue's jog controller is a ShuttlePRO v2, so
-   that drawing is the primary one; the layout still needs checking against the unit.)
+6. **ShuttlePRO v2 layout**: redrawn on 20 Oct 2026 from the unit's product photo (a pear-shaped body, four ovals, five
+   ovals, the ring and jog, a side button each side, four curved buttons below the ring), with Contour's numbering
+   (1 to 4, 5 to 9, then 10 / 11 the upper curved pair, 12 / 13 the lower, 14 / 15 the sides). Please press each button on
+   the venue's unit with the Controller tab open and check the right part lights (one table to fix:
+   `Logic/ShuttleProLayout.cs`), and whether the venue has a ShuttleXpress as well.
 7. ~~F9 for the live panel~~: dropped. The user wants a mouse-clickable icon tab, no keyboard shortcut.
 8. **Default tab**: Controller (proposed) or Output layout on first run?
 

@@ -60,7 +60,7 @@
 
       <!-- The drawing: one ScaleTransform (1.0 or 0.75) via the Viewbox, so stroke widths scale with it -->
       <Viewbox x:Name="DrawingBox" Width="320" Height="160" Stretch="Uniform" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="0,4,0,0">
-        <ContentControl x:Name="DrawingHost" Focusable="False" IsTabStop="False" IsHitTestVisible="False"/>
+        <ContentControl x:Name="DrawingHost" Focusable="False" IsTabStop="False"/>
       </Viewbox>
 
       <!-- The info column. Fixed row heights, so nothing jumps when the state changes. -->

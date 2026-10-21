@@ -74,7 +74,9 @@ public sealed class FakeEngine : IScrollEngine
     {
     }
 
-    public double ReadPosition() => 0;
+    public double Position { get; set; }
+
+    public double ReadPosition() => Position;
 
     public void RaiseStatus() => StatusChanged?.Invoke(this, Status);
 }

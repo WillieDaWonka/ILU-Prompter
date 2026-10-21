@@ -1,19 +1,22 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 160" width="640" height="320">
   <!--
     ILU Prompter - controller drawing: Contour ShuttlePRO v2 (15 buttons). DESIGN.md "Controller drawing".
-    Design box 320 x 160 DIP. Ids are ControlIds; classes as in controller-xbox.svg and controller-shuttlexpress.svg.
-    SCHEMATIC: button positions follow the provider's logical numbering (left to right, top to bottom,
-    DefaultBindings.ShuttleButtons); check against the physical unit before building (DESIGN.md open question).
-    Geometry (centre C = (160,100)):
-      Body: rounded rect x 84..236, y 4..156, rx 24.
-      Row 1, Button1..4: 18 x 10 (rx 3) centred at x 124, 148, 172, 196; y 18.
-      Row 2, Button5..9: 18 x 10 (rx 3) centred at x 112, 136, 160, 184, 208; y 36.
-      Ring: annulus outer r 40, inner r 30. Ticks: line (160,61)-(160,69) rotated 15k degrees about C.
-        Arc band between r 32 and r 38. Same rules as the ShuttleXpress.
-      Jog: circle r 26. Dimple r 3.5 at radius 17, angle 36 x (detents mod 10).
-      Side buttons, 16 x 16 (rx 3): Button10 (102,76), Button11 (218,76), Button12 (102,102), Button13 (218,102).
-      Thumb buttons, 24 x 14 (rx 5): Button14 (104,136), Button15 (216,136).
-    Sample state shown: ring at +2 (30 degrees), Button6 lit (Blank output), Buttons 9 to 15 unbound.
+    Design box 320 x 160 DIP. Drawn from the unit's product photo (a tall pear-shaped body, the controls in its top 65 %);
+    generated from the same numbers as ShuttleProDrawing.xaml. Ids are ControlIds; classes as in controller-xbox.svg.
+    Button numbers (Contour's manual; Logic/ShuttleProLayout.cs is the one table in the app; VERIFY ON THE DEVICE):
+      1 to 4   top row, four ovals on a gentle arc, left to right.
+      5 to 9   second row, left to right: 5 and 9 the outer two (lower, at the shoulders, angled), 6, 7, 8 the inner three.
+      10, 11   the upper pair of long curved buttons below the ring (left, right).
+      12, 13   the lower pair, above the palm rest (left, right).
+      14, 15   the tall side buttons, left and right of the ring.
+    Geometry (centre C = (160,68)):
+      Body: pear, x 108..212 at its widest (y 50), narrowing to x 115..205 at y 122, rounded base at y 157.
+      Ovals: 14 x 9 (rx 4.5) centred as listed in the XAML, rotated about their centre. Side buttons: 8 x 24 (rx 4).
+      Curved buttons: 7 px wide bands along a quadratic curve, round ends (the paths below).
+      Ring: annulus outer r 28, inner r 21.5. Ticks: line (160,40.8)-(160,45.2) rotated 15k degrees about C.
+        Arc band between r 23.6 and r 26.4 (the same rules as the ShuttleXpress).
+      Jog: circle r 19. Three dimples r 4.4 at radius 9.6, 120 degrees apart, turning 36 degrees a click (10 clicks a turn).
+    Sample state shown: ring at +2 (30 degrees), Button6 lit (Blank output), Buttons 9 to 15 unbound, jog turned 2 clicks.
   -->
   <style>
     .ground{fill:#181B1F}
@@ -29,55 +32,52 @@
     .dimple{fill:#8F8F9C}
   </style>
   <rect class="ground" width="320" height="160"/>
+  <path id="Body" class="body" d="M 160,3 C 196,3 212,15 212,50 C 212,80 208,102 205,122 C 202,144 188,157 160,157 C 132,157 118,144 115,122 C 112,102 108,80 108,50 C 108,15 124,3 160,3 Z"/>
 
-  <rect id="Body" class="body" x="84" y="4" width="152" height="152" rx="24"/>
-
-  <!-- Row 1 -->
-  <rect id="Button1" class="ctl" x="115" y="13" width="18" height="10" rx="3"/>
-  <rect id="Button2" class="ctl" x="139" y="13" width="18" height="10" rx="3"/>
-  <rect id="Button3" class="ctl" x="163" y="13" width="18" height="10" rx="3"/>
-  <rect id="Button4" class="ctl" x="187" y="13" width="18" height="10" rx="3"/>
-  <!-- Row 2 -->
-  <rect id="Button5" class="ctl" x="103" y="31" width="18" height="10" rx="3"/>
-  <rect id="Button6" class="lit" x="127" y="31" width="18" height="10" rx="3"/>
-  <rect id="Button7" class="ctl" x="151" y="31" width="18" height="10" rx="3"/>
-  <rect id="Button8" class="ctl" x="175" y="31" width="18" height="10" rx="3"/>
-  <rect id="Button9" class="unb" x="199" y="31" width="18" height="10" rx="3"/>
+  <rect id="Button1" class="ctl" x="127.5" y="16.5" width="14" height="9" rx="4.5" transform="rotate(-14 134.5 21)"/>
+  <rect id="Button2" class="ctl" x="144.5" y="12.5" width="14" height="9" rx="4.5" transform="rotate(-4 151.5 17)"/>
+  <rect id="Button3" class="ctl" x="161.5" y="12.5" width="14" height="9" rx="4.5" transform="rotate(4 168.5 17)"/>
+  <rect id="Button4" class="ctl" x="178.5" y="16.5" width="14" height="9" rx="4.5" transform="rotate(14 185.5 21)"/>
+  <rect id="Button5" class="ctl" x="119.5" y="36.5" width="14" height="9" rx="4.5" transform="rotate(-40 126.5 41)"/>
+  <rect id="Button6" class="lit" x="136" y="27" width="14" height="9" rx="4.5" transform="rotate(-8 143 31.5)"/>
+  <rect id="Button7" class="ctl" x="153" y="24.5" width="14" height="9" rx="4.5"/>
+  <rect id="Button8" class="ctl" x="170" y="27" width="14" height="9" rx="4.5" transform="rotate(8 177 31.5)"/>
+  <rect id="Button9" class="unb" x="186.5" y="36.5" width="14" height="9" rx="4.5" transform="rotate(40 193.5 41)"/>
+  <path id="Button10" class="unb" d="M 119.27,84.19 Q 127.81,94.86 144.6,102.21 A 3.5,3.5 0 0 0 147.4,95.79 Q 132.19,89.14 124.73,79.81 A 3.5,3.5 0 0 0 119.27,84.19 Z"/>
+  <path id="Button11" class="unb" d="M 195.27,79.81 Q 187.81,89.14 172.6,95.79 A 3.5,3.5 0 0 0 175.4,102.21 Q 192.19,94.86 200.73,84.19 A 3.5,3.5 0 0 0 195.27,79.81 Z"/>
+  <path id="Button12" class="unb" d="M 112.6,90.97 Q 122.64,105.76 140.51,114.17 A 3.5,3.5 0 0 0 143.49,107.83 Q 127.36,100.24 118.4,87.03 A 3.5,3.5 0 0 0 112.6,90.97 Z"/>
+  <path id="Button13" class="unb" d="M 201.6,87.03 Q 192.64,100.24 176.51,107.83 A 3.5,3.5 0 0 0 179.49,114.17 Q 197.36,105.76 207.4,90.97 A 3.5,3.5 0 0 0 201.6,87.03 Z"/>
+  <rect id="Button14" class="unb" x="114.5" y="53" width="8" height="24" rx="4"/>
+  <rect id="Button15" class="unb" x="197.5" y="53" width="8" height="24" rx="4"/>
 
   <!-- Ring -->
   <g id="Ring">
-    <circle class="ring" cx="160" cy="100" r="40"/>
-    <circle class="ring" cx="160" cy="100" r="30"/>
-    <line class="tick" x1="160" y1="61" x2="160" y2="69" transform="rotate(-105 160 100)"/>
-    <line class="tick" x1="160" y1="61" x2="160" y2="69" transform="rotate(-90 160 100)"/>
-    <line class="tick" x1="160" y1="61" x2="160" y2="69" transform="rotate(-75 160 100)"/>
-    <line class="tick" x1="160" y1="61" x2="160" y2="69" transform="rotate(-60 160 100)"/>
-    <line class="tick" x1="160" y1="61" x2="160" y2="69" transform="rotate(-45 160 100)"/>
-    <line class="tick" x1="160" y1="61" x2="160" y2="69" transform="rotate(-30 160 100)"/>
-    <line class="tick" x1="160" y1="61" x2="160" y2="69" transform="rotate(-15 160 100)"/>
-    <line class="tick0" x1="160" y1="61" x2="160" y2="69"/>
-    <line class="tick" x1="160" y1="61" x2="160" y2="69" transform="rotate(15 160 100)"/>
-    <line class="tick" x1="160" y1="61" x2="160" y2="69" transform="rotate(30 160 100)"/>
-    <line class="tick" x1="160" y1="61" x2="160" y2="69" transform="rotate(45 160 100)"/>
-    <line class="tick" x1="160" y1="61" x2="160" y2="69" transform="rotate(60 160 100)"/>
-    <line class="tick" x1="160" y1="61" x2="160" y2="69" transform="rotate(75 160 100)"/>
-    <line class="tick" x1="160" y1="61" x2="160" y2="69" transform="rotate(90 160 100)"/>
-    <line class="tick" x1="160" y1="61" x2="160" y2="69" transform="rotate(105 160 100)"/>
-    <!-- Arc band 0..+30 degrees, r 32..38: outer (160,62) to (179,67.09); inner (176,72.29) to (160,68) -->
-    <path id="Ring.Arc" class="ind" d="M 160 62 A 38 38 0 0 1 179 67.09 L 176 72.29 A 32 32 0 0 0 160 68 Z"/>
-    <line id="Ring.Now" class="tick-now" x1="160" y1="61" x2="160" y2="69" transform="rotate(30 160 100)"/>
+    <circle class="ring" cx="160" cy="68" r="28"/>
+    <circle class="ring" cx="160" cy="68" r="21.5"/>
+    <line class="tick" x1="160" y1="40.8" x2="160" y2="45.2" transform="rotate(-105 160 68)"/>
+    <line class="tick" x1="160" y1="40.8" x2="160" y2="45.2" transform="rotate(-90 160 68)"/>
+    <line class="tick" x1="160" y1="40.8" x2="160" y2="45.2" transform="rotate(-75 160 68)"/>
+    <line class="tick" x1="160" y1="40.8" x2="160" y2="45.2" transform="rotate(-60 160 68)"/>
+    <line class="tick" x1="160" y1="40.8" x2="160" y2="45.2" transform="rotate(-45 160 68)"/>
+    <line class="tick" x1="160" y1="40.8" x2="160" y2="45.2" transform="rotate(-30 160 68)"/>
+    <line class="tick" x1="160" y1="40.8" x2="160" y2="45.2" transform="rotate(-15 160 68)"/>
+    <line class="tick0" x1="160" y1="40.8" x2="160" y2="45.2"/>
+    <line class="tick" x1="160" y1="40.8" x2="160" y2="45.2" transform="rotate(15 160 68)"/>
+    <line class="tick" x1="160" y1="40.8" x2="160" y2="45.2" transform="rotate(30 160 68)"/>
+    <line class="tick" x1="160" y1="40.8" x2="160" y2="45.2" transform="rotate(45 160 68)"/>
+    <line class="tick" x1="160" y1="40.8" x2="160" y2="45.2" transform="rotate(60 160 68)"/>
+    <line class="tick" x1="160" y1="40.8" x2="160" y2="45.2" transform="rotate(75 160 68)"/>
+    <line class="tick" x1="160" y1="40.8" x2="160" y2="45.2" transform="rotate(90 160 68)"/>
+    <line class="tick" x1="160" y1="40.8" x2="160" y2="45.2" transform="rotate(105 160 68)"/>
+    <path id="Ring.Arc" class="ind" d="M 160 41.6 A 26.4 26.4 0 0 1 173.2 45.14 L 171.8 47.56 A 23.6 23.6 0 0 0 160 44.4 Z"/>
+    <line id="Ring.Now" class="tick-now" x1="160" y1="40.8" x2="160" y2="45.2" transform="rotate(30 160 68)"/>
   </g>
 
   <!-- Jog -->
-  <circle id="Jog" class="ctl" cx="160" cy="100" r="26"/>
-  <circle id="Jog.Dimple" class="dimple" cx="160" cy="83" r="3.5"/>
-
-  <!-- Side buttons -->
-  <rect id="Button10" class="unb" x="94" y="68" width="16" height="16" rx="3"/>
-  <rect id="Button11" class="unb" x="210" y="68" width="16" height="16" rx="3"/>
-  <rect id="Button12" class="unb" x="94" y="94" width="16" height="16" rx="3"/>
-  <rect id="Button13" class="unb" x="210" y="94" width="16" height="16" rx="3"/>
-  <!-- Thumb buttons -->
-  <rect id="Button14" class="unb" x="92" y="129" width="24" height="14" rx="5"/>
-  <rect id="Button15" class="unb" x="204" y="129" width="24" height="14" rx="5"/>
+  <circle id="Jog" class="ctl" cx="160" cy="68" r="19"/>
+  <g id="Jog.Dimples" transform="rotate(72 160 68)">
+    <circle id="Jog.Dimple1" class="dimple" cx="152.65" cy="61.83" r="4.4"/>
+    <circle id="Jog.Dimple2" class="dimple" cx="169.02" cy="64.72" r="4.4"/>
+    <circle id="Jog.Dimple3" class="dimple" cx="158.33" cy="77.45" r="4.4"/>
+  </g>
 </svg>

@@ -781,14 +781,15 @@ public class ControllerPanelTests
     }
 
     [Fact]
-    public void TheJogWheel_CountsDetents_StepsItsDimple_AndLightsItsEdge()
+    public void TheJogWheel_CountsDetents_TurnsByTheirAngle_AndLightsItsEdge()
     {
         var rig = new Rig(ControllerKind.JogShuttle);
         rig.Connect(Contour, "Contour ShuttleXpress");
         rig.Notch(Contour, ControlIds.JogWheel, 4);
         rig.Poll(100);
         var shuttle = rig.Model.Frame.Shuttle!;
-        Assert.Equal(4, shuttle.JogDimple);
+        Assert.Equal(4, shuttle.JogSteps);
+        Assert.Equal(144, shuttle.JogAngle);   // 4 clicks of 36 degrees
         Assert.True(shuttle.JogLit);
         var row = rig.Model.Rows.Single(r => r.Control == "Jog");
         Assert.Equal("+4", row.Value);
@@ -798,7 +799,8 @@ public class ControllerPanelTests
         rig.Poll(100);
         Assert.Equal("−2", rig.Model.Rows.Single(r => r.Control == "Jog").Value);
         Assert.Equal("Previous line", rig.Model.Rows.Single(r => r.Control == "Jog").Action);
-        Assert.Equal(8, rig.Model.Frame.Shuttle!.JogDimple);   // total -2, mod 10
+        Assert.Equal(-2, rig.Model.Frame.Shuttle!.JogSteps);
+        Assert.Equal(-72, rig.Model.Frame.Shuttle!.JogAngle);   // the other way
 
         rig.Poll(450);
         Assert.False(rig.Model.Frame.Shuttle!.JogLit);
@@ -830,6 +832,38 @@ public class ControllerPanelTests
         var rig = new Rig(ControllerKind.JogShuttle);
         rig.Poll();
         Assert.Equal(ControllerPanelState.NotFound, rig.Model.State);
+        Assert.Equal(ControllerDrawingKind.ShuttlePro, rig.Model.Frame.Kind);
+    }
+
+    [Theory]
+    [InlineData("Contour ShuttleXpress / PRO")]   // what the provider reports when nothing is plugged in
+    [InlineData("Contour ShuttleXpress")]          // a name alone, never found, is not enough either
+    public void WithNoShuttleFound_TheProIsDrawn_WhateverTheProviderCallsIt(string name)
+    {
+        var rig = new Rig(ControllerKind.JogShuttle);
+        rig.Router.RaiseStatus(new DeviceStatus(Contour, name, DeviceConnection.NotFound));
+        rig.Poll();
+        Assert.Equal(ControllerPanelState.NotFound, rig.Model.State);
+        Assert.Equal(ControllerDrawingKind.ShuttlePro, rig.Model.Frame.Kind);
+        Assert.Equal("Contour ShuttlePRO v2", rig.Model.DetailLine);
+    }
+
+    [Fact]
+    public void AnXpressThatWasFound_StaysAnXpressWhenItIsUnplugged()
+    {
+        var rig = new Rig(ControllerKind.JogShuttle);
+        rig.Router.RaiseStatus(new DeviceStatus(Contour, "Contour ShuttleXpress", DeviceConnection.Disconnected));
+        rig.Poll();
+        Assert.Equal(ControllerPanelState.Lost, rig.Model.State);
+        Assert.Equal(ControllerDrawingKind.ShuttleXpress, rig.Model.Frame.Kind);
+    }
+
+    [Fact]
+    public void WithNoShuttleFound_TheShuttleProIsDrawnDimmed()
+    {
+        var rig = new Rig(ControllerKind.JogShuttle);
+        rig.Poll();
+        Assert.True(rig.Model.Frame.Missing);
         Assert.Equal(ControllerDrawingKind.ShuttlePro, rig.Model.Frame.Kind);
     }
 

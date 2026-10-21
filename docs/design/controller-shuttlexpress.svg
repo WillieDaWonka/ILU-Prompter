@@ -9,7 +9,7 @@
           drawn as one vertical line (160,53)-(160,63) rotated about C. Tick 0 is 1.5 px, the others 1 px.
         Position k = round(value x 7). Arc band from 0 to 15k degrees between r 39 and r 45 (fill: ind / ind-unb),
           plus the tick at k drawn 3 px in text-strong. At k = 0: no band, tick 0 in text-muted.
-      Jog wheel (Jog): circle r 32. Dimple: circle r 4 at radius 22, angle 36 x (detent count mod 10) degrees.
+      Jog wheel (Jog): circle r 32. Dimple: circle r 4 at radius 22, angle 36 x net clicks degrees (ContourJog: 10 clicks a turn).
       Buttons 1..5 on an arc of radius 64 about C at -60, -30, 0, +30, +60 degrees:
         (104.6,68) (128,44.6) (160,36) (192,44.6) (215.4,68); each a 22 x 12 rounded rect (rx 4) rotated by its angle.
     Sample state shown: ring at +3 (45 degrees), jog dimple at 2 detents (72 degrees), Button3 lit.

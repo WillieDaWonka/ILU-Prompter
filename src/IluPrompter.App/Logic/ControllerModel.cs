@@ -68,8 +68,15 @@ public sealed record TriggerFrame(string Id, bool Bound, int FillPx, double Tick
 /// <summary>The mouse wheel: treads phase 0 to 3, chevrons lit for 400 ms after a notch.</summary>
 public sealed record WheelFrame(bool Bound, int TreadPhase, bool UpLit, bool DownLit);
 
-/// <summary>The shuttle ring (position K, -7 to +7) and jog wheel (dimple index 0 to 9).</summary>
-public sealed record ShuttleFrame(bool RingBound, int RingK, IndicatorLook RingArc, bool JogBound, int JogDimple, bool JogLit);
+/// <summary>
+/// The shuttle ring (position K, -7 to +7) and jog wheel: its net clicks (<see cref="JogSteps"/>, which set the angle the
+/// dimples are turned to).
+/// </summary>
+public sealed record ShuttleFrame(bool RingBound, int RingK, IndicatorLook RingArc, bool JogBound, int JogSteps, bool JogLit)
+{
+    /// <summary>The angle of the jog wheel, clockwise positive, within one turn.</summary>
+    public double JogAngle => ContourJog.AngleDegrees(JogSteps);
+}
 
 /// <summary>
 /// Everything the drawing shows at one poll. Immutable; two frames are equal when they look the same

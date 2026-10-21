@@ -40,18 +40,24 @@ public class CommandLineTests
     }
 
     [Fact]
-    public void TheDemoScript_OnlyEverUsesTheWheelOverThePreview_NoDevice()
+    public void TheDemoScript_OnlyEverUsesTheWheelOverThePreview_AndAMadeUpJogSource_NoDevice()
     {
         var steps = IluPrompter.App.Services.DemoInput.Script(1);
         Assert.NotEmpty(steps);
         Assert.All(steps, step =>
         {
-            Assert.Equal(IluPrompter.Core.ControllerKind.MouseWheel, step.Input.Source.Kind);
-            Assert.Equal(IluPrompter.Core.AppSources.App, step.Input.Source.DeviceId);
+            var source = step.Input.Source;
+            var wheel = source.Kind == IluPrompter.Core.ControllerKind.MouseWheel && source.DeviceId == IluPrompter.Core.AppSources.App;
+            var jog = source.Kind == IluPrompter.Core.ControllerKind.JogShuttle && source.DeviceId == IluPrompter.App.Services.DemoInput.JogDeviceId;
+            Assert.True(wheel || jog, "the demo uses only the preview wheel and the made-up jog source");
         });
         Assert.True(steps.Max(s => s.AtMs) < IluPrompter.App.Services.DemoInput.CycleMs);
-        // balanced: the wheel returns to where it started and every button that goes down comes up
-        Assert.Equal(0, steps.Select(s => s.Input).OfType<IluPrompter.Core.RelativeInput>().Sum(r => r.Amount));
+        // the jog turns the picture: several clicks, then back
+        var jogClicks = steps.Select(s => s.Input).OfType<IluPrompter.Core.RelativeInput>().Where(r => r.ControlId == IluPrompter.Core.ControlIds.JogWheel).ToList();
+        Assert.True(jogClicks.Count(c => c.Amount > 0) >= 4);
+        // balanced: the wheel and the jog return to where they started and every button that goes down comes up
+        foreach (var id in new[] { IluPrompter.Core.ControlIds.Wheel, IluPrompter.Core.ControlIds.JogWheel })
+            Assert.Equal(0, steps.Select(s => s.Input).OfType<IluPrompter.Core.RelativeInput>().Where(r => r.ControlId == id).Sum(r => r.Amount));
         foreach (var id in steps.Select(s => s.Input).OfType<IluPrompter.Core.ButtonInput>().Select(b => b.ControlId).Distinct())
         {
             var edges = steps.Select(s => s.Input).OfType<IluPrompter.Core.ButtonInput>().Where(b => b.ControlId == id).ToList();

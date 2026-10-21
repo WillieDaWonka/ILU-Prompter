@@ -65,7 +65,7 @@ public partial class ShuttleXpressDrawing : UserControl, IControllerDrawing
             if (shuttle.JogLit) _painter.Stroke(Jog, shuttle.JogBound ? _painter.Text : _painter.LineStrong, 1.5);
             DrawingPainter.Show(Jog_Dimple, true);
             Jog_Dimple.Fill = shuttle.JogBound ? _painter.TextMuted : _painter.LineStrong;
-            ContourRing.PlaceDimple(Jog_Dimple, Cx, Cy, 22, shuttle.JogDimple);
+            ContourRing.PlaceDimple(Jog_Dimple, Cx, Cy, 22, shuttle.JogAngle);
         }
     }
 }
